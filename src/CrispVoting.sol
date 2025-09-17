@@ -70,6 +70,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     }
 
     /// @notice Initializes the plugin
+    /// @param _params The plugin initialization parameters
     function initialize(PluginInitParams calldata _params) external initializer {
         __PluginUUPSUpgradeable_init(_params.dao);
 
