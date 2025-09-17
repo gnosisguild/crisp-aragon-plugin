@@ -6,3 +6,5 @@ forge-std/=lib/forge-std/src/
 @openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 @ensdomains/ens-contracts/=lib/ens-contracts/
 @ensdomains/buffer/=lib/buffer
+
+@enclave-e3/contracts=node_modules/@enclave-e3/contracts 
