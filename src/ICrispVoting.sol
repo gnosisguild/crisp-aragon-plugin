@@ -67,6 +67,7 @@ interface ICrispVoting {
 
     /// @notice The parameters for initializing the plugin
     /// @param dao The DAO contract address
+    /// @param token The token contract address
     /// @param enclave The enclave contract address
     /// @param filter The address of the pool of nodes from which to select the committee.
     /// @param threshold The M/N threshold for the committee.
@@ -75,6 +76,7 @@ interface ICrispVoting {
     /// @param e3ProgramParams The ABI encoded computation parameters.
     struct PluginInitParams {
         IDAO dao;
+        address token;
         address enclave;
         address filter;
         uint256[2] threshold;
