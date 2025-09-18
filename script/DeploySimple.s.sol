@@ -11,13 +11,10 @@ import {PluginRepoFactory} from "@aragon/osx/framework/plugin/repo/PluginRepoFac
 import {PluginRepo} from "@aragon/osx/framework/plugin/repo/PluginRepo.sol";
 import {PluginSetupRef} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessorHelpers.sol";
 import {GovernanceERC20} from "@aragon/token-voting-plugin/erc20/GovernanceERC20.sol";
-import {GovernanceWrappedERC20} from
-    "@aragon/token-voting-plugin/erc20/GovernanceWrappedERC20.sol";
+import {GovernanceWrappedERC20} from "@aragon/token-voting-plugin/erc20/GovernanceWrappedERC20.sol";
 
-import {IVotesUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
-import {IERC20Upgradeable} from
-    "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import {CrispVoting} from "../src/CrispVoting.sol";
 import {CrispVotingSetup} from "../src/setup/CrispVotingSetup.sol";
@@ -61,10 +58,7 @@ contract MaciVotingScript is Script {
         Vm.Log[] memory logEntries = vm.getRecordedLogs();
 
         for (uint256 i = 0; i < logEntries.length; i++) {
-            if (
-                logEntries[i].topics[0]
-                    == keccak256("InstallationApplied(address,address,bytes32,bytes32)")
-            ) {
+            if (logEntries[i].topics[0] == keccak256("InstallationApplied(address,address,bytes32,bytes32)")) {
                 pluginAddress.push(address(uint160(uint256(logEntries[i].topics[2]))));
             }
         }
@@ -124,9 +118,9 @@ contract MaciVotingScript is Script {
         (, tokenSettings, mintSettings) = Utils.getGovernanceTokenAndMintSettings();
         Utils.CrispEnvVariables memory crispEnvVariables = Utils.readCrispEnv();
 
-        /// @notice dao and token get set in prepare installation 
+        /// @notice dao and token get set in prepare installation
         params = ICrispVoting.PluginInitParams({
-            dao: IDAO(address(0)), 
+            dao: IDAO(address(0)),
             token: address(0),
             enclave: crispEnvVariables.enclave,
             filter: crispEnvVariables.registryFilter,
@@ -150,7 +144,6 @@ contract MaciVotingScript is Script {
         bytes memory pluginSettingsData = abi.encode(params, tokenSettings, mintSettings);
         PluginRepo.Tag memory tag = PluginRepo.Tag(1, 1);
         pluginSettings = new IDAOFactory.PluginSettings[](1);
-        pluginSettings[0] =
-            IDAOFactory.PluginSettings(PluginSetupRef(tag, pluginRepo), pluginSettingsData);
+        pluginSettings[0] = IDAOFactory.PluginSettings(PluginSetupRef(tag, pluginRepo), pluginSettingsData);
     }
 }

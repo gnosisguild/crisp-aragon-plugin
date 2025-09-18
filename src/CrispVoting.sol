@@ -6,16 +6,12 @@ import {IDAO, Action} from "@aragon/osx/core/dao/DAO.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
 import {IEnclave} from "@enclave-e3/contracts/contracts/interfaces/IEnclave.sol";
 import {IE3Program} from "@enclave-e3/contracts/contracts/interfaces/IE3Program.sol";
-import {ProposalUpgradeable} from
-    "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/ProposalUpgradeable.sol";
-import {IVotesUpgradeable} from
-"@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
-import {IProposal} from
-    "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/IProposal.sol";
-import {SafeCastUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
+import {ProposalUpgradeable} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/ProposalUpgradeable.sol";
+import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
+import {IProposal} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/IProposal.sol";
+import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 
-import { ICrispVoting } from "./ICrispVoting.sol";
+import {ICrispVoting} from "./ICrispVoting.sol";
 
 /// @title My Upgradeable Plugin
 /// @notice A plugin that exposes a permissioned function to store a number and a function that makes the DAO execute an action.
@@ -23,17 +19,16 @@ import { ICrispVoting } from "./ICrispVoting.sol";
 /// @dev In order for resetDaoMetadata() to work, the plugin needs to hold EXECUTE_PERMISSION_ID on the DAO
 /// @notice This plugin is inspired by MACI's voting plugin - https://github.com/privacy-ethereum/maci-voting-plugin-aragon/blob/main/src/MaciVoting.sol
 contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting {
-    /// @notice used to cast uint256 to uint64 safely 
+    /// @notice used to cast uint256 to uint64 safely
     using SafeCastUpgradeable for uint256;
 
     /// @notice The manager permission id
     bytes32 public constant MANAGER_PERMISSION_ID = keccak256("MANAGER_PERMISSION");
 
     /// @notice The interface id for the Crisp Voting plugin
-    bytes4 internal constant CRISP_VOTING_INTERFACE_ID = this.initialize.selector
-        ^ this.minProposerVotingPower.selector ^ this.totalVotingPower.selector
-        ^ this.getVotingToken.selector ^ this.minParticipation.selector ^ this.minDuration.selector
-        ^ this.getProposal.selector;
+    bytes4 internal constant CRISP_VOTING_INTERFACE_ID = this.initialize.selector ^ this.minProposerVotingPower.selector
+        ^ this.totalVotingPower.selector ^ this.getVotingToken.selector ^ this.minParticipation.selector
+        ^ this.minDuration.selector ^ this.getProposal.selector;
 
     /// @notice The enclave contract reference
     IEnclave public enclave;
@@ -81,7 +76,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         votingToken = IVotesUpgradeable(_params.token);
     }
 
-
     /// @notice Creates a new proposal, as well as a new E3 request in Enclave
     /// @param _metadata The metadata of the proposal
     /// @param _actions The actions that will be executed if the proposal passes
@@ -90,10 +84,10 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     /// @param _data The additional abi-encoded data to include more necessary fields
     /// @return proposalId The id of the proposal
     function createProposal(
-        bytes memory _metadata, 
-        Action[] memory _actions, 
-        uint64 _startDate, 
-        uint64 _endDate, 
+        bytes memory _metadata,
+        Action[] memory _actions,
+        uint64 _startDate,
+        uint64 _endDate,
         bytes memory _data
     ) external returns (uint256 proposalId) {
         /// @notice Create a deterministic proposal id
@@ -131,15 +125,11 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             computeProviderParams: computeProviderParams
         });
 
-
         // send the request to Enclave
-        (uint256 e3Id, ) = enclave.request(requestParams);
+        (uint256 e3Id,) = enclave.request(requestParams);
 
-        // temp variables to store the proposal data 
-        TallyResults memory tallyResults = TallyResults({
-            yes: 0,
-            no: 0
-        });
+        // temp variables to store the proposal data
+        TallyResults memory tallyResults = TallyResults({yes: 0, no: 0});
 
         // we need to move this to own scope to avoid stack too deep
         {
@@ -149,30 +139,26 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
                 snapshotBlock: block.number,
                 minVotingPower: votingSettings.minProposerVotingPower
             });
-    
-            /// @notice Store the data 
+
+            /// @notice Store the data
             proposal.executed = false;
             proposal.tally = tallyResults;
             proposal.parameters = proposalParameters;
             proposal.allowFailureMap = _allowFailureMap;
             proposal.targetConfig = getTargetConfig();
             proposal.e3Id = e3Id;
-    
+
             for (uint256 i = 0; i < _actions.length;) {
                 proposal.actions.push(_actions[i]);
-    
+
                 unchecked {
                     ++i;
                 }
             }
         }
 
-        emit ProposalCreated(
-            proposalId, _msgSender(), _startDate, _endDate, _metadata, _actions, _allowFailureMap
-        );
-        
+        emit ProposalCreated(proposalId, _msgSender(), _startDate, _endDate, _metadata, _actions, _allowFailureMap);
     }
-
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
     /// @param _interfaceId The ID of the interface.
@@ -304,7 +290,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
         Proposal storage proposal = proposals[_proposalId];
 
-        /// @notice we set the proposal as executed so it cannot be executed again 
+        /// @notice we set the proposal as executed so it cannot be executed again
         proposal.executed = true;
 
         // just execute it
@@ -322,7 +308,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     function customProposalParamsABI() external pure returns (string memory) {
         return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
     }
-
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables
     ///         without shifting down storage in the inheritance chain

@@ -44,8 +44,7 @@ interface IDAOFactory {
     /// If provided, each plugin is installed
     /// after the DAO creation.
     /// @return createdDao The address of the newly created DAO instance.
-    function createDao(
-        DAOSettings calldata _daoSettings,
-        PluginSettings[] calldata _pluginSettings
-    ) external returns (address createdDao);
+    function createDao(DAOSettings calldata _daoSettings, PluginSettings[] calldata _pluginSettings)
+        external
+        returns (address createdDao);
 }

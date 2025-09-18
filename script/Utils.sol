@@ -50,11 +50,7 @@ library Utils {
 
     function getGovernanceTokenAndMintSettings()
         public
-        returns (
-            GovernanceERC20,
-            CrispVotingSetup.TokenSettings memory,
-            GovernanceERC20.MintSettings memory
-        )
+        returns (GovernanceERC20, CrispVotingSetup.TokenSettings memory, GovernanceERC20.MintSettings memory)
     {
         CrispVotingSetup.TokenSettings memory tokenSettings = CrispVotingSetup.TokenSettings({
             addr: address(0), // If set to `address(0)`, a new `GovernanceERC20` token is deployed
@@ -72,9 +68,8 @@ library Utils {
             mintSettings.amounts[i] = amount;
         }
 
-        GovernanceERC20 governanceERC20Base = new GovernanceERC20(
-            IDAO(address(0x0)), tokenSettings.name, tokenSettings.symbol, mintSettings
-        );
+        GovernanceERC20 governanceERC20Base =
+            new GovernanceERC20(IDAO(address(0x0)), tokenSettings.name, tokenSettings.symbol, mintSettings);
         return (governanceERC20Base, tokenSettings, mintSettings);
     }
 }
