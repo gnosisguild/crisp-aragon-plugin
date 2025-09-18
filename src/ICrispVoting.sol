@@ -32,12 +32,10 @@ interface ICrispVoting {
 
     /// @notice A struct for the voting settings.
     /// @param minProposerVotingPower The minimum voting power needed to propose a vote.
-    /// @param totalVotingPower The total voting power of the DAO (sum of the voting power of all the members).
     /// @param minParticipation The minimum participation needed to vote.
     /// @param minDuration The minimum duration of the vote.
     struct VotingSettings {
         uint256 minProposerVotingPower;
-        uint256 totalVotingPower;
         uint32 minParticipation;
         uint64 minDuration;
     }

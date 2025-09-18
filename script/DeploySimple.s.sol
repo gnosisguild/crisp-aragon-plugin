@@ -1,110 +1,156 @@
-// // SPDX-License-Identifier: UNLICENSED
-// pragma solidity ^0.8.17;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.29;
 
-// import {Script, console2} from "forge-std/Script.sol";
-// import {stdJson} from "forge-std/StdJson.sol";
+/* solhint-disable no-console */
 
-// import {PluginRepoFactory} from "@aragon/osx/framework/plugin/repo/PluginRepoFactory.sol";
-// import {PluginRepo} from "@aragon/osx/framework/plugin/repo/PluginRepo.sol";
-// import {hashHelpers, PluginSetupRef} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessorHelpers.sol";
-// import {MyPluginSetup} from "../src/setup/MyPluginSetup.sol";
+import {Script, console2} from "forge-std/Script.sol";
+import {Vm} from "forge-std/Vm.sol";
 
-// /**
-//  * This script performs the following tasks:
-//  * - Deploys a new PluginRepo for each available plugin
-//  * - Publishes a new version of each plugin (release 1, build 1)
-//  */
-// contract DeploySimpleScript is Script {
-//     using stdJson for string;
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {PluginRepoFactory} from "@aragon/osx/framework/plugin/repo/PluginRepoFactory.sol";
+import {PluginRepo} from "@aragon/osx/framework/plugin/repo/PluginRepo.sol";
+import {PluginSetupRef} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessorHelpers.sol";
+import {GovernanceERC20} from "@aragon/token-voting-plugin/erc20/GovernanceERC20.sol";
+import {GovernanceWrappedERC20} from
+    "@aragon/token-voting-plugin/erc20/GovernanceWrappedERC20.sol";
 
-//     address deployer;
-//     PluginRepoFactory pluginRepoFactory;
-//     string pluginEnsSubdomain;
-//     address pluginRepoMaintainerAddress;
+import {IVotesUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
+import {IERC20Upgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-//     // Artifacts
-//     PluginRepo myPluginRepo;
-//     MyPluginSetup myPluginSetup;
+import {CrispVoting} from "../src/CrispVoting.sol";
+import {CrispVotingSetup} from "../src/setup/CrispVotingSetup.sol";
+import {ICrispVoting} from "../src/ICrispVoting.sol";
+import {Utils} from "../script/Utils.sol";
+import {IDAOFactory} from "../src/IDAOFactory.sol";
 
-//     modifier broadcast() {
-//         uint256 privKey = vm.envUint("DEPLOYMENT_PRIVATE_KEY");
-//         vm.startBroadcast(privKey);
+contract MaciVotingScript is Script {
+    address public pluginRepoFactory;
+    IDAOFactory public daoFactory;
+    string public nameWithEntropy;
+    address[] public pluginAddress;
 
-//         deployer = vm.addr(privKey);
-//         console2.log("General");
-//         console2.log("- Deploying from:   ", deployer);
-//         console2.log("- Chain ID:         ", block.chainid);
-//         console2.log("");
+    function setUp() public {
+        pluginRepoFactory = vm.envAddress("PLUGIN_REPO_FACTORY");
+        daoFactory = IDAOFactory(vm.envAddress("DAO_FACTORY"));
+        nameWithEntropy = string.concat("maci-voting-plugin-", vm.toString(block.timestamp));
+    }
 
-//         _;
+    function run() public {
+        // 0. Setting up Foundry
+        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
 
-//         vm.stopBroadcast();
-//     }
+        // 1. Deploying the Plugin Setup
+        CrispVotingSetup pluginSetup = deployPluginSetup();
 
-//     function setUp() public {
-//         // Pick the contract addresses from
-//         // https://github.com/aragon/osx/blob/main/packages/artifacts/src/addresses.json
+        // 2. Publishing it in the Aragon OSx Protocol
+        PluginRepo pluginRepo = deployPluginRepo(address(pluginSetup));
 
-//         // Prepare the OSx factories for the current network
-//         pluginRepoFactory = PluginRepoFactory(vm.envAddress("PLUGIN_REPO_FACTORY_ADDRESS"));
-//         vm.label(address(pluginRepoFactory), "PluginRepoFactory");
+        // 3. Defining the DAO Settings
+        IDAOFactory.DAOSettings memory daoSettings = getDAOSettings();
 
-//         // Read the rest of environment variables
-//         pluginEnsSubdomain = vm.envOr("PLUGIN_ENS_SUBDOMAIN", string(""));
+        // 4. Defining the plugin settings
+        IDAOFactory.PluginSettings[] memory pluginSettings = getPluginSettings(pluginRepo);
 
-//         // Using a random subdomain if empty
-//         if (bytes(pluginEnsSubdomain).length == 0) {
-//             pluginEnsSubdomain = string.concat("my-test-plugin-", vm.toString(block.timestamp));
-//         }
+        // 5. Deploying the DAO
+        vm.recordLogs();
+        address createdDAO = daoFactory.createDao(daoSettings, pluginSettings);
 
-//         pluginRepoMaintainerAddress = vm.envAddress("PLUGIN_REPO_MAINTAINER_ADDRESS");
-//         vm.label(pluginRepoMaintainerAddress, "Maintainer");
-//     }
+        // 6. Getting the Plugin Address
+        Vm.Log[] memory logEntries = vm.getRecordedLogs();
 
-//     function run() public broadcast {
-//         // Publish the first version in a new plugin repo
-//         deployPluginRepo();
+        for (uint256 i = 0; i < logEntries.length; i++) {
+            if (
+                logEntries[i].topics[0]
+                    == keccak256("InstallationApplied(address,address,bytes32,bytes32)")
+            ) {
+                pluginAddress.push(address(uint160(uint256(logEntries[i].topics[2]))));
+            }
+        }
 
-//         // Done
-//         printDeployment();
+        vm.stopBroadcast();
 
-//         // Write the addresses to a JSON file
-//         if (!vm.envOr("SIMULATION", false)) {
-//             writeJsonArtifacts();
-//         }
-//     }
+        // 7. Logging the resulting addresses
+        console2.log("Plugin Setup: ", address(pluginSetup));
+        console2.log("Plugin Repo: ", address(pluginRepo));
+        console2.log("Created DAO: ", createdDAO);
+        console2.log("Installed Plugins and voting tokens: ");
+        for (uint256 i = 0; i < pluginAddress.length; i++) {
+            console2.log("- Plugin: ", pluginAddress[i]);
+            console2.log("- Token:  ", address(CrispVoting(pluginAddress[i]).getVotingToken()));
+        }
+    }
 
-//     function deployPluginRepo() public {
-//         // Plugin setup (the installer)
-//         myPluginSetup = new MyPluginSetup();
+    function deployPluginSetup() public returns (CrispVotingSetup) {
+        // GovernanceERC20 and GovernanceWrappedERC20 are implementation contracts. If one is
+        // required, it will be cloned with token and mint settings from Utils
+        GovernanceERC20 governanceERC20Base = new GovernanceERC20(
+            IDAO(address(0)),
+            "",
+            "",
+            GovernanceERC20.MintSettings({receivers: new address[](0), amounts: new uint256[](0)})
+        );
+        GovernanceWrappedERC20 governanceWrappedERC20Base =
+            new GovernanceWrappedERC20(IERC20Upgradeable(address(0)), "", "");
+        address crispVoting = address(new CrispVoting());
+        CrispVotingSetup pluginSetup =
+            new CrispVotingSetup(governanceERC20Base, governanceWrappedERC20Base, crispVoting);
+        return pluginSetup;
+    }
 
-//         // The new plugin repository
-//         // Publish the plugin in a new repo as release 1, build 1
-//         myPluginRepo = pluginRepoFactory.createPluginRepoWithFirstVersion(
-//             pluginEnsSubdomain, address(myPluginSetup), pluginRepoMaintainerAddress, " ", " "
-//         );
-//     }
+    function deployPluginRepo(address pluginSetup) public returns (PluginRepo pluginRepo) {
+        pluginRepo = PluginRepoFactory(pluginRepoFactory).createPluginRepoWithFirstVersion(
+            nameWithEntropy,
+            pluginSetup,
+            msg.sender,
+            "1", // TODO: Give these actual values on prod
+            "1"
+        );
+    }
 
-//     function printDeployment() public view {
-//         console2.log("MyUpgradeablePlugin:");
-//         console2.log("- Plugin repo:               ", address(myPluginRepo));
-//         console2.log("- Plugin repo maintainer:    ", pluginRepoMaintainerAddress);
-//         console2.log("- ENS:                       ", string.concat(pluginEnsSubdomain, ".plugin.dao.eth"));
-//         console2.log("");
-//     }
+    function getDAOSettings() public view returns (IDAOFactory.DAOSettings memory) {
+        return IDAOFactory.DAOSettings(address(0), "", nameWithEntropy, "");
+    }
 
-//     function writeJsonArtifacts() internal {
-//         string memory artifacts = "output";
-//         artifacts.serialize("pluginRepo", address(myPluginRepo));
-//         artifacts.serialize("pluginRepoMaintainer", pluginRepoMaintainerAddress);
-//         artifacts = artifacts.serialize("pluginEnsDomain", string.concat(pluginEnsSubdomain, ".plugin.dao.eth"));
+    function getCrispVotingSetupParams()
+        internal
+        returns (
+            ICrispVoting.PluginInitParams memory params,
+            CrispVotingSetup.TokenSettings memory tokenSettings,
+            GovernanceERC20.MintSettings memory mintSettings
+        )
+    {
+        (, tokenSettings, mintSettings) = Utils.getGovernanceTokenAndMintSettings();
+        Utils.CrispEnvVariables memory crispEnvVariables = Utils.readCrispEnv();
 
-//         string memory networkName = vm.envString("NETWORK_NAME");
-//         string memory filePath = string.concat(
-//             vm.projectRoot(), "/artifacts/deployment-", networkName, "-", vm.toString(block.timestamp), ".json"
-//         );
-//         artifacts.write(filePath);
+        /// @notice dao and token get set in prepare installation 
+        params = ICrispVoting.PluginInitParams({
+            dao: IDAO(address(0)), 
+            token: address(0),
+            enclave: crispEnvVariables.enclave,
+            filter: crispEnvVariables.registryFilter,
+            threshold: crispEnvVariables.threshold,
+            startWindow: crispEnvVariables.startWindow,
+            crispProgramAddress: crispEnvVariables.crispProgramAddress,
+            crispProgramParams: crispEnvVariables.crispProgramParams,
+            computeProviderParams: crispEnvVariables.computeProviderParams
+        });
+    }
 
-//         console2.log("Deployment artifacts written to", filePath);
-//     }
-// }
+    function getPluginSettings(PluginRepo pluginRepo)
+        public
+        returns (IDAOFactory.PluginSettings[] memory pluginSettings)
+    {
+        (
+            ICrispVoting.PluginInitParams memory params,
+            CrispVotingSetup.TokenSettings memory tokenSettings,
+            GovernanceERC20.MintSettings memory mintSettings
+        ) = getCrispVotingSetupParams();
+        bytes memory pluginSettingsData = abi.encode(params, tokenSettings, mintSettings);
+        PluginRepo.Tag memory tag = PluginRepo.Tag(1, 1);
+        pluginSettings = new IDAOFactory.PluginSettings[](1);
+        pluginSettings[0] =
+            IDAOFactory.PluginSettings(PluginSetupRef(tag, pluginRepo), pluginSettingsData);
+    }
+}
