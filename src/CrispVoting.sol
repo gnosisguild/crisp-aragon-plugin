@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import {DAO, IDAO, Action} from "@aragon/osx/core/dao/DAO.sol";
+import {IDAO, Action} from "@aragon/osx/core/dao/DAO.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
 import {IEnclave} from "@enclave-e3/contracts/contracts/interfaces/IEnclave.sol";
 import {IE3Program} from "@enclave-e3/contracts/contracts/interfaces/IE3Program.sol";
@@ -70,6 +70,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     }
 
     /// @notice Initializes the plugin
+    /// @param _params The plugin initialization parameters
     function initialize(PluginInitParams calldata _params) external initializer {
         __PluginUUPSUpgradeable_init(_params.dao);
 
@@ -77,6 +78,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             revert ZeroAddress();
         }
         enclave = IEnclave(_params.enclave);
+        votingToken = IVotesUpgradeable(_params.token);
     }
 
 

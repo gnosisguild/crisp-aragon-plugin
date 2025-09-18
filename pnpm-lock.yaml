@@ -14,6 +14,9 @@ importers:
       '@aragon/osx-commons-contracts':
         specifier: 1.4.0
         version: 1.4.0
+      '@aragon/token-voting-plugin':
+        specifier: github:aragon/token-voting-plugin#v1.3
+        version: https://codeload.github.com/aragon/token-voting-plugin/tar.gz/30b1218de64c29c78932f95f29a0e1863779372c
       '@enclave-e3/contracts':
         specifier: 0.0.10-test
         version: 0.0.10-test
@@ -50,6 +53,10 @@ packages:
 
   '@aragon/osx@1.4.0':
     resolution: {integrity: sha512-FY9GizdhRXCLOuy/pADbLD3BsFZ9c+4JmvGC4DB7mauyck8yY2Itf4RhFG3X/afzVihex0bNths4wIf90ZaaUA==}
+
+  '@aragon/token-voting-plugin@https://codeload.github.com/aragon/token-voting-plugin/tar.gz/30b1218de64c29c78932f95f29a0e1863779372c':
+    resolution: {tarball: https://codeload.github.com/aragon/token-voting-plugin/tar.gz/30b1218de64c29c78932f95f29a0e1863779372c}
+    version: 0.0.0
 
   '@babel/code-frame@7.27.1':
     resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
@@ -3042,6 +3049,8 @@ snapshots:
       - web3-core-promievent
       - web3-eth-abi
       - web3-utils
+
+  '@aragon/token-voting-plugin@https://codeload.github.com/aragon/token-voting-plugin/tar.gz/30b1218de64c29c78932f95f29a0e1863779372c': {}
 
   '@babel/code-frame@7.27.1':
     dependencies:
