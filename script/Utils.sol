@@ -42,8 +42,8 @@ library Utils {
         crispEnvVariables.threshold[0] = VM.envUint("THRESHOLD_0");
         crispEnvVariables.threshold[1] = VM.envUint("THRESHOLD_1");
         /// @notice Careful that this is not a safe cast so it could overflow
-        crispEnvVariables.startWindow[0] = VM.envUint("START_WINDOW_0");
-        crispEnvVariables.startWindow[1] = VM.envUint("START_WINDOW_1");
+        crispEnvVariables.startWindow[0] = block.timestamp;
+        crispEnvVariables.startWindow[1] = crispEnvVariables.startWindow[0] + VM.envUint("WINDOW_SIZE");
         crispEnvVariables.crispProgramParams = VM.envBytes("CRISP_PROGRAM_PARAMS");
         crispEnvVariables.computeProviderParams = VM.envBytes("COMPUTE_PROVIDER_PARAMS");
     }

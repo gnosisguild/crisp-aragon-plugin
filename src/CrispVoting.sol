@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.29;
 
-import {IDAO, Action} from "@aragon/osx/core/dao/DAO.sol";
+import {Action} from "@aragon/osx/core/dao/DAO.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
 import {IEnclave} from "@enclave-e3/contracts/contracts/interfaces/IEnclave.sol";
 import {IE3Program} from "@enclave-e3/contracts/contracts/interfaces/IE3Program.sol";
