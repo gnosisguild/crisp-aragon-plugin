@@ -21,16 +21,16 @@ import {ICrispVoting} from "../src/ICrispVoting.sol";
 import {Utils} from "../script/Utils.sol";
 import {IDAOFactory} from "../src/IDAOFactory.sol";
 
-contract MaciVotingScript is Script {
+contract CrispVotingScript is Script {
     address public pluginRepoFactory;
     IDAOFactory public daoFactory;
     string public nameWithEntropy;
     address[] public pluginAddress;
 
     function setUp() public {
-        pluginRepoFactory = vm.envAddress("PLUGIN_REPO_FACTORY");
-        daoFactory = IDAOFactory(vm.envAddress("DAO_FACTORY"));
-        nameWithEntropy = string.concat("maci-voting-plugin-", vm.toString(block.timestamp));
+        pluginRepoFactory = vm.envAddress("PLUGIN_REPO_FACTORY_ADDRESS");
+        daoFactory = IDAOFactory(vm.envAddress("DAO_FACTORY_ADDRESS"));
+        nameWithEntropy = string.concat("crisp-voting-plugin-", vm.toString(block.timestamp));
     }
 
     function run() public {

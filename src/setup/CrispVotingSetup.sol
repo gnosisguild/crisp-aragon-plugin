@@ -125,7 +125,7 @@ contract CrispVotingSetup is PluginSetup {
             new PermissionLib.MultiTargetPermission[](tokenSettings.addr != address(0) ? 1 : 2);
 
         // The pugin has EXECUTE_PERMISSION_ID on the DAO
-        permissions[1] = PermissionLib.MultiTargetPermission({
+        permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
             where: _dao,
             who: plugin,
@@ -137,7 +137,7 @@ contract CrispVotingSetup is PluginSetup {
         if (tokenSettings.addr == address(0)) {
             bytes32 tokenMintPermission = GovernanceERC20(token).MINT_PERMISSION_ID();
 
-            preparedSetupData.permissions[2] = PermissionLib.MultiTargetPermission({
+            permissions[1] = PermissionLib.MultiTargetPermission({
                 operation: PermissionLib.Operation.Grant,
                 where: token,
                 who: _dao,
