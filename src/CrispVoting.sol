@@ -76,6 +76,25 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         votingToken = IVotesUpgradeable(_params.token);
     }
 
+    /// @notice Creates a new E3 request in Enclave
+    /// @dev This is a wrapper around the createProposal function as we need it to be payable
+    /// as there will be charges for the E3 request in Enclave.
+    /// @param _metadata The metadata of the proposal
+    /// @param _actions The actions that will be executed if the proposal passes
+    /// @param _startDate The start date of the proposal
+    /// @param _endDate The end date of the proposal
+    /// @param _data The additional abi-encoded data to include more necessary fields
+    /// @return e3Id The id of the E3 request
+    function createE3Request(
+        bytes memory _metadata,
+        Action[] memory _actions,
+        uint64 _startDate,
+        uint64 _endDate,
+        bytes memory _data
+    ) external payable returns (uint256 e3Id) {
+        return createProposal(_metadata, _actions, _startDate, _endDate, _data);
+    }
+
     /// @notice Creates a new proposal, as well as a new E3 request in Enclave
     /// @param _metadata The metadata of the proposal
     /// @param _actions The actions that will be executed if the proposal passes
@@ -89,7 +108,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         uint64 _startDate,
         uint64 _endDate,
         bytes memory _data
-    ) external returns (uint256 proposalId) {
+    ) public returns (uint256 proposalId) {
         /// @notice Create a deterministic proposal id
         proposalId = _createProposalId(keccak256(abi.encode(_actions, _metadata)));
 
