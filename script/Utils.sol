@@ -20,7 +20,7 @@ library Utils {
         address crispProgramAddress;
         ICrispVoting.VotingSettings votingSettings;
         IPlugin.TargetConfig targetConfig;
-        uint256[2] threshold;
+        uint32[2] threshold;
         bytes crispProgramParams;
         bytes computeProviderParams;
     }
@@ -38,8 +38,8 @@ library Utils {
             minParticipation: uint32(VM.envUint("MINIMUM_PARTICIPATION"))
         });
         crispEnvVariables.targetConfig = defaultTargetConfig;
-        crispEnvVariables.threshold[0] = VM.envUint("THRESHOLD_0");
-        crispEnvVariables.threshold[1] = VM.envUint("THRESHOLD_1");
+        crispEnvVariables.threshold[0] = uint32(VM.envUint("THRESHOLD_0"));
+        crispEnvVariables.threshold[1] = uint32(VM.envUint("THRESHOLD_1"));
         crispEnvVariables.crispProgramParams = VM.envBytes("CRISP_PROGRAM_PARAMS");
         crispEnvVariables.computeProviderParams = VM.envBytes("COMPUTE_PROVIDER_PARAMS");
     }

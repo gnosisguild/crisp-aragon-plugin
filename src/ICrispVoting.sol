@@ -28,6 +28,8 @@ interface ICrispVoting {
     /// @param limit The bound limit (start or end date).
     /// @param actual The actual time.
     error DateOutOfBounds(uint64 limit, uint64 actual);
+    /// @notice Thrown when the caller should use createE3Request instead of createProposal.
+    error UseCreateE3RequestInstead();
 
     /// @notice A struct for the voting settings.
     /// @param minProposerVotingPower The minimum voting power needed to propose a vote.
@@ -75,7 +77,7 @@ interface ICrispVoting {
         address token;
         address enclave;
         address filter;
-        uint256[2] threshold;
+        uint32[2] threshold;
         address crispProgramAddress;
         bytes crispProgramParams;
         bytes computeProviderParams;

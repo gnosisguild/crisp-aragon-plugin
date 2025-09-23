@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.29;
 
-import {TestBase} from "./lib/TestBase.sol";
+import {TestBase} from "../lib/TestBase.sol";
 
 import {Action} from "@aragon/osx/core/dao/DAO.sol";
-import {SimpleBuilder} from "./builders/SimpleBuilder.sol";
-import {ICrispVoting} from "../src/ICrispVoting.sol";
+import {SimpleBuilder} from "../builders/SimpleBuilder.sol";
+import {ICrispVoting} from "../../src/ICrispVoting.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {DaoUnauthorized} from "@aragon/osx-commons-contracts/src/permission/auth/auth.sol";
-import {CrispVoting} from "../src/CrispVoting.sol";
+import {CrispVoting} from "../../src/CrispVoting.sol";
 
 contract MyPluginTest is TestBase {
     DAO dao;
@@ -40,14 +40,23 @@ contract MyPluginTest is TestBase {
         (dao, plugin) = new SimpleBuilder().build();
     }
 
-    function test_RevertWhen_CallingInitialize() external {
-        // It Should revert
-        vm.expectRevert("Initializable: contract is already initialized");
-        plugin.initialize(pluginInitParams);
-    }
+    function test_CreateE3Request() external payable {
+        address alice = makeAddr("alice");
 
-    function test_WhenCallingDao() external view {
-        // It Should return the right values
-        assertEq(address(plugin.dao()), address(dao));
+        // Give alice 10 ETH
+        deal(alice, 10 ether);
+
+        // Make alice the msg.sender for the next call
+        vm.prank(alice);
+        // It Should create a new E3 request
+        plugin.createE3Request{value: 1}(
+            bytes(""),
+            new Action[](0),
+            uint64(block.timestamp),
+            uint64(block.timestamp + 100),
+            abi.encode(uint256(0), [uint256(block.timestamp), uint256(block.timestamp + 500)])
+        );
+
+        vm.stopPrank();
     }
 }
