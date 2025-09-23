@@ -21,7 +21,6 @@ library Utils {
         ICrispVoting.VotingSettings votingSettings;
         IPlugin.TargetConfig targetConfig;
         uint256[2] threshold;
-        uint256[2] startWindow;
         bytes crispProgramParams;
         bytes computeProviderParams;
     }
@@ -41,9 +40,6 @@ library Utils {
         crispEnvVariables.targetConfig = defaultTargetConfig;
         crispEnvVariables.threshold[0] = VM.envUint("THRESHOLD_0");
         crispEnvVariables.threshold[1] = VM.envUint("THRESHOLD_1");
-        /// @notice Careful that this is not a safe cast so it could overflow
-        crispEnvVariables.startWindow[0] = block.timestamp;
-        crispEnvVariables.startWindow[1] = crispEnvVariables.startWindow[0] + VM.envUint("WINDOW_SIZE");
         crispEnvVariables.crispProgramParams = VM.envBytes("CRISP_PROGRAM_PARAMS");
         crispEnvVariables.computeProviderParams = VM.envBytes("COMPUTE_PROVIDER_PARAMS");
     }

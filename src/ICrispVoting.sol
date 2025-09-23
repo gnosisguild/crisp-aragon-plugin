@@ -68,7 +68,6 @@ interface ICrispVoting {
     /// @param enclave The enclave contract address
     /// @param filter The address of the pool of nodes from which to select the committee.
     /// @param threshold The M/N threshold for the committee.
-    /// @param startWindow The start window for the computation.
     /// @param e3Program The address of the E3 Program.
     /// @param e3ProgramParams The ABI encoded computation parameters.
     struct PluginInitParams {
@@ -77,7 +76,6 @@ interface ICrispVoting {
         address enclave;
         address filter;
         uint256[2] threshold;
-        uint256[2] startWindow;
         address crispProgramAddress;
         bytes crispProgramParams;
         bytes computeProviderParams;

@@ -48,8 +48,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     address private filter;
     /// @notice The ciphernode threshold
     uint32[2] private threshold;
-    /// @notice The start window for the computation
-    uint256[2] private startWindow;
     /// @notice The address of the E3 Program
     address private crispProgramAddress;
     /// @notice The ABI encoded program parameters
@@ -84,6 +82,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     /// @param _startDate The start date of the proposal
     /// @param _endDate The end date of the proposal
     /// @param _data The additional abi-encoded data to include more necessary fields
+    /// This includes whether to allow failures, and the enclave request start window details
     /// @return e3Id The id of the E3 request
     function createE3Request(
         bytes memory _metadata,
@@ -132,26 +131,25 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
 
         /// @notice Decode the data
-        (uint256 _allowFailureMap,,) = abi.decode(_data, (uint256, uint8, bool));
-
-        IEnclave.E3RequestParams memory requestParams = IEnclave.E3RequestParams({
-            filter: filter,
-            threshold: threshold,
-            startWindow: startWindow,
-            duration: _endDate - _startDate,
-            e3Program: IE3Program(crispProgramAddress),
-            e3ProgramParams: crispProgramParams,
-            computeProviderParams: computeProviderParams
-        });
-
-        // send the request to Enclave
-        (uint256 e3Id,) = enclave.request(requestParams);
-
-        // temp variables to store the proposal data
-        TallyResults memory tallyResults = TallyResults({yes: 0, no: 0});
-
+        (uint256 _allowFailureMap, uint256[2] memory _startWindow) = abi.decode(_data, (uint256, uint256[2]));
+        
         // we need to move this to own scope to avoid stack too deep
         {
+            IEnclave.E3RequestParams memory requestParams = IEnclave.E3RequestParams({
+                filter: filter,
+                threshold: threshold,
+                startWindow: _startWindow,
+                duration: _endDate - _startDate,
+                e3Program: IE3Program(crispProgramAddress),
+                e3ProgramParams: crispProgramParams,
+                computeProviderParams: computeProviderParams
+            });
+
+            // send the request to Enclave
+            (uint256 e3Id,) = enclave.request(requestParams);
+
+            // temp variables to store the proposal data
+            TallyResults memory tallyResults = TallyResults({yes: 0, no: 0});
             ProposalParameters memory proposalParameters = ProposalParameters({
                 startDate: _startDate,
                 endDate: _endDate,
