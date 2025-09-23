@@ -8,16 +8,13 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IPluginSetup, PluginSetup, PermissionLib} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
 import {ProxyLib} from "@aragon/osx-commons-contracts/src/utils/deployment/ProxyLib.sol";
 
-import {IVotesUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
-import {IERC20Upgradeable} from
-    "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {GovernanceERC20} from "@aragon/token-voting-plugin/erc20/GovernanceERC20.sol";
-import {GovernanceWrappedERC20} from
-    "@aragon/token-voting-plugin/erc20/GovernanceWrappedERC20.sol";
+import {GovernanceWrappedERC20} from "@aragon/token-voting-plugin/erc20/GovernanceWrappedERC20.sol";
 
-import { CrispVoting } from "../CrispVoting.sol";
-import { ICrispVoting } from "../ICrispVoting.sol";
+import {CrispVoting} from "../CrispVoting.sol";
+import {ICrispVoting} from "../ICrispVoting.sol";
 
 /// @title CrispVotingSetup
 /// @notice Manages the installation and unintallation of the CRISP plugin on a DAO.
@@ -82,7 +79,7 @@ contract CrispVotingSetup is PluginSetup {
         external
         returns (address plugin, PreparedSetupData memory preparedSetupData)
     {
-        // Decode the installation params 
+        // Decode the installation params
         (
             ICrispVoting.PluginInitParams memory params,
             TokenSettings memory tokenSettings,
@@ -114,24 +111,21 @@ contract CrispVotingSetup is PluginSetup {
         } else {
             // Clone a `GovernanceERC20`.
             token = governanceERC20Base.clone();
-            GovernanceERC20(token).initialize(
-                IDAO(_dao), tokenSettings.name, tokenSettings.symbol, mintSettings
-            );
+            GovernanceERC20(token).initialize(IDAO(_dao), tokenSettings.name, tokenSettings.symbol, mintSettings);
         }
 
         params.dao = IDAO(_dao);
         params.token = token;
 
         // 1) Upgradeable plugin variant
-        plugin = ProxyLib.deployUUPSProxy(
-            implementation(), abi.encodeCall(CrispVoting.initialize, params)
-        );
+        plugin = ProxyLib.deployUUPSProxy(implementation(), abi.encodeCall(CrispVoting.initialize, params));
 
         // Request permissions
-        PermissionLib.MultiTargetPermission[] memory permissions = new PermissionLib.MultiTargetPermission[](tokenSettings.addr != address(0) ? 1 : 2);
+        PermissionLib.MultiTargetPermission[] memory permissions =
+            new PermissionLib.MultiTargetPermission[](tokenSettings.addr != address(0) ? 1 : 2);
 
         // The pugin has EXECUTE_PERMISSION_ID on the DAO
-        permissions[1] = PermissionLib.MultiTargetPermission({
+        permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
             where: _dao,
             who: plugin,
@@ -143,7 +137,7 @@ contract CrispVotingSetup is PluginSetup {
         if (tokenSettings.addr == address(0)) {
             bytes32 tokenMintPermission = GovernanceERC20(token).MINT_PERMISSION_ID();
 
-            preparedSetupData.permissions[2] = PermissionLib.MultiTargetPermission({
+            permissions[1] = PermissionLib.MultiTargetPermission({
                 operation: PermissionLib.Operation.Grant,
                 where: token,
                 who: _dao,
@@ -168,7 +162,7 @@ contract CrispVotingSetup is PluginSetup {
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _dao,
-             who: _payload.plugin,
+            who: _payload.plugin,
             condition: PermissionLib.NO_CONDITION,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
@@ -177,20 +171,15 @@ contract CrispVotingSetup is PluginSetup {
     /// @notice Unsatisfiably determines if the token is an IVotes interface.
     /// @dev Many tokens don't use ERC165 even though they still support IVotes.
     function supportsIVotesInterface(address token) public view returns (bool) {
-        (bool success1, bytes memory data1) = token.staticcall(
-            abi.encodeWithSelector(IVotesUpgradeable.getPastTotalSupply.selector, 0)
-        );
-        (bool success2, bytes memory data2) = token.staticcall(
-            abi.encodeWithSelector(IVotesUpgradeable.getVotes.selector, address(this))
-        );
-        (bool success3, bytes memory data3) = token.staticcall(
-            abi.encodeWithSelector(IVotesUpgradeable.getPastVotes.selector, address(this), 0)
-        );
+        (bool success1, bytes memory data1) =
+            token.staticcall(abi.encodeWithSelector(IVotesUpgradeable.getPastTotalSupply.selector, 0));
+        (bool success2, bytes memory data2) =
+            token.staticcall(abi.encodeWithSelector(IVotesUpgradeable.getVotes.selector, address(this)));
+        (bool success3, bytes memory data3) =
+            token.staticcall(abi.encodeWithSelector(IVotesUpgradeable.getPastVotes.selector, address(this), 0));
 
-        return (
-            success1 && data1.length == 0x20 && success2 && data2.length == 0x20 && success3
-                && data3.length == 0x20
-        );
+        return
+            (success1 && data1.length == 0x20 && success2 && data2.length == 0x20 && success3 && data3.length == 0x20);
     }
 
     /// @notice Unsatisfiably determines if the contract is an ERC20 token.

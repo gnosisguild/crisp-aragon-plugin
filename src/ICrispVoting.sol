@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IVotesUpgradeable} from
-"@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
+import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import {Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 import {IPlugin} from "@aragon/osx-commons-contracts/src/plugin/IPlugin.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
@@ -32,19 +31,17 @@ interface ICrispVoting {
 
     /// @notice A struct for the voting settings.
     /// @param minProposerVotingPower The minimum voting power needed to propose a vote.
-    /// @param totalVotingPower The total voting power of the DAO (sum of the voting power of all the members).
     /// @param minParticipation The minimum participation needed to vote.
     /// @param minDuration The minimum duration of the vote.
     struct VotingSettings {
         uint256 minProposerVotingPower;
-        uint256 totalVotingPower;
         uint32 minParticipation;
         uint64 minDuration;
     }
 
     /// @notice A struct for the results of the voting. We read from the Enclave contract and
     /// store the results here.
-    /// @notice For now we do not support abstain votes so we can reduce the number of greco proofs to be generated. 
+    /// @notice For now we do not support abstain votes so we can reduce the number of greco proofs to be generated.
     /// Either way, in most governance proposals, abstain votes do not affect the outcome.
     /// @param yes The number of votes for the "yes" option.
     /// @param no The number of votes for the "no" option.
@@ -86,7 +83,6 @@ interface ICrispVoting {
         bytes computeProviderParams;
     }
 
-
     /// @notice A struct for proposal-related information.
     /// @param executed Whether the proposal is executed or not.
     /// @param parameters The proposal parameters at the time of the proposal creation.
@@ -98,7 +94,7 @@ interface ICrispVoting {
     /// and operation type (either `Call` or `DelegateCall`). Defined by `TargetConfig` in the
     /// `IPlugin` interface,
     ///     part of the `osx-commons-contracts` package, added in build 3.
-    /// @param e3Id The ID of the E3 request ID 
+    /// @param e3Id The ID of the E3 request ID
     struct Proposal {
         bool executed;
         ProposalParameters parameters;
