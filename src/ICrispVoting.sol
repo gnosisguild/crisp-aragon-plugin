@@ -130,4 +130,9 @@ interface ICrispVoting {
     /// @param _proposalId The id of the proposal.
     /// @return The proposal data.
     function getProposal(uint256 _proposalId) external view returns (Proposal memory);
+
+    /// @notice Returns the proposal data for a given proposal index.
+    /// @param _index The index of the proposal to retrieve.
+    /// @return The proposal data.
+    function getProposalByIndex(uint256 _index) external view returns (Proposal memory);
 }

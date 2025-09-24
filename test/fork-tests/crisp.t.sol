@@ -57,6 +57,8 @@ contract MyPluginTest is TestBase {
             abi.encode(uint256(0), [uint256(block.timestamp), uint256(block.timestamp + 500)])
         );
 
+        assertEq(plugin.numberOfProposals(), 1);
+        
         vm.stopPrank();
     }
 }

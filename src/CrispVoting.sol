@@ -55,6 +55,12 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     /// @notice The ABI encoded compute provider parameters
     bytes private computeProviderParams;
 
+    /// @notice The number of proposals created
+    uint256 public numberOfProposals;
+
+    /// @notice A mapping between proposal indexes and proposal ids
+    mapping(uint256 => uint256) public proposalCounts;
+
     /// @notice Disables the initializers on the implementation contract to prevent
     /// it from being left uninitialized.
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -101,6 +107,14 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
         /// @notice Get the proposal storage variable
         Proposal storage proposal = proposals[proposalId];
+
+        /// @notice Store the proposal id mapped to the proposal index
+        proposalCounts[numberOfProposals] = proposalId;
+
+        /// @notice Increment the number of proposals
+        unchecked {
+            numberOfProposals++;
+        }
 
         // move to own scope to avoid stack too deep
         {
@@ -166,12 +180,12 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     }
 
     function createProposal(
-        bytes memory _metadata,
-        Action[] memory _actions,
-        uint64 _startDate,
-        uint64 _endDate,
-        bytes memory _data
-    ) external returns (uint256 proposalId) {
+        bytes memory,
+        Action[] memory,
+        uint64,
+        uint64,
+        bytes memory 
+    ) external returns (uint256) {
         revert UseCreateE3RequestInstead();
     }
 
@@ -209,12 +223,14 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         return proposals[_proposalId].executed;
     }
 
-    /// @notice Returns the proposal data for a given proposal ID.
-    /// @param _proposalId The ID of the proposal to retrieve.
-    /// @return proposal_ The proposal data including execution status, parameters, tally results,
-    /// actions, and other metadata.
+    /// @inheritdoc ICrispVoting
     function getProposal(uint256 _proposalId) external view returns (Proposal memory proposal_) {
         proposal_ = proposals[_proposalId];
+    }
+
+    /// @inheritdoc ICrispVoting
+    function getProposalByIndex(uint256 _index) external view returns (Proposal memory) {
+        return proposals[proposalCounts[_index]];
     }
 
     /// @inheritdoc ICrispVoting
@@ -320,8 +336,9 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         emit ProposalExecuted(_proposalId);
     }
 
+    /// @inheritdoc IProposal
     function customProposalParamsABI() external pure returns (string memory) {
-        return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
+        return "(uint256 allowFailureMap, uint256[2] startWindow)";
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables
