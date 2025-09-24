@@ -50,4 +50,9 @@ contract MyPluginTest is TestBase {
         // It Should return the right values
         assertEq(address(plugin.dao()), address(dao));
     }
+
+    function test_CorrectNumberOfProposals() external view {
+        // It Should return the right values
+        assertEq(plugin.numberOfProposals(), 0);
+    }
 }
