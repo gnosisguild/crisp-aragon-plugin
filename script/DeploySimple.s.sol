@@ -124,7 +124,6 @@ contract CrispVotingScript is Script {
             enclave: crispEnvVariables.enclave,
             filter: crispEnvVariables.registryFilter,
             threshold: crispEnvVariables.threshold,
-            startWindow: crispEnvVariables.startWindow,
             crispProgramAddress: crispEnvVariables.crispProgramAddress,
             crispProgramParams: crispEnvVariables.crispProgramParams,
             computeProviderParams: crispEnvVariables.computeProviderParams

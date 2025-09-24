@@ -28,6 +28,8 @@ interface ICrispVoting {
     /// @param limit The bound limit (start or end date).
     /// @param actual The actual time.
     error DateOutOfBounds(uint64 limit, uint64 actual);
+    /// @notice Thrown when the caller should use createE3Request instead of createProposal.
+    error UseCreateE3RequestInstead();
 
     /// @notice A struct for the voting settings.
     /// @param minProposerVotingPower The minimum voting power needed to propose a vote.
@@ -68,7 +70,6 @@ interface ICrispVoting {
     /// @param enclave The enclave contract address
     /// @param filter The address of the pool of nodes from which to select the committee.
     /// @param threshold The M/N threshold for the committee.
-    /// @param startWindow The start window for the computation.
     /// @param e3Program The address of the E3 Program.
     /// @param e3ProgramParams The ABI encoded computation parameters.
     struct PluginInitParams {
@@ -76,8 +77,7 @@ interface ICrispVoting {
         address token;
         address enclave;
         address filter;
-        uint256[2] threshold;
-        uint256[2] startWindow;
+        uint32[2] threshold;
         address crispProgramAddress;
         bytes crispProgramParams;
         bytes computeProviderParams;

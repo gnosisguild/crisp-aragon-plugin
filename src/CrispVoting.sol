@@ -48,8 +48,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     address private filter;
     /// @notice The ciphernode threshold
     uint32[2] private threshold;
-    /// @notice The start window for the computation
-    uint256[2] private startWindow;
     /// @notice The address of the E3 Program
     address private crispProgramAddress;
     /// @notice The ABI encoded program parameters
@@ -74,22 +72,30 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
         enclave = IEnclave(_params.enclave);
         votingToken = IVotesUpgradeable(_params.token);
+        filter = _params.filter;
+        threshold = _params.threshold;
+        crispProgramAddress = _params.crispProgramAddress;
+        crispProgramParams = _params.crispProgramParams;
+        computeProviderParams = _params.computeProviderParams;
     }
 
-    /// @notice Creates a new proposal, as well as a new E3 request in Enclave
+    /// @notice Creates a new E3 request in Enclave
+    /// @dev This is a wrapper around the createProposal function as we need it to be payable
+    /// as there will be charges for the E3 request in Enclave.
     /// @param _metadata The metadata of the proposal
     /// @param _actions The actions that will be executed if the proposal passes
     /// @param _startDate The start date of the proposal
     /// @param _endDate The end date of the proposal
     /// @param _data The additional abi-encoded data to include more necessary fields
+    /// This includes whether to allow failures, and the enclave request start window details
     /// @return proposalId The id of the proposal
-    function createProposal(
+    function createE3Request(
         bytes memory _metadata,
         Action[] memory _actions,
         uint64 _startDate,
         uint64 _endDate,
         bytes memory _data
-    ) external returns (uint256 proposalId) {
+    ) external payable returns (uint256 proposalId) {
         /// @notice Create a deterministic proposal id
         proposalId = _createProposalId(keccak256(abi.encode(_actions, _metadata)));
 
@@ -113,26 +119,25 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
 
         /// @notice Decode the data
-        (uint256 _allowFailureMap,,) = abi.decode(_data, (uint256, uint8, bool));
-
-        IEnclave.E3RequestParams memory requestParams = IEnclave.E3RequestParams({
-            filter: filter,
-            threshold: threshold,
-            startWindow: startWindow,
-            duration: _endDate - _startDate,
-            e3Program: IE3Program(crispProgramAddress),
-            e3ProgramParams: crispProgramParams,
-            computeProviderParams: computeProviderParams
-        });
-
-        // send the request to Enclave
-        (uint256 e3Id,) = enclave.request(requestParams);
-
-        // temp variables to store the proposal data
-        TallyResults memory tallyResults = TallyResults({yes: 0, no: 0});
+        (uint256 _allowFailureMap, uint256[2] memory _startWindow) = abi.decode(_data, (uint256, uint256[2]));
 
         // we need to move this to own scope to avoid stack too deep
         {
+            IEnclave.E3RequestParams memory requestParams = IEnclave.E3RequestParams({
+                filter: filter,
+                threshold: threshold,
+                startWindow: _startWindow,
+                duration: _endDate - _startDate,
+                e3Program: IE3Program(crispProgramAddress),
+                e3ProgramParams: crispProgramParams,
+                computeProviderParams: computeProviderParams
+            });
+
+            // send the request to Enclave
+            (uint256 e3Id,) = enclave.request{value: msg.value}(requestParams);
+
+            // temp variables to store the proposal data
+            TallyResults memory tallyResults = TallyResults({yes: 0, no: 0});
             ProposalParameters memory proposalParameters = ProposalParameters({
                 startDate: _startDate,
                 endDate: _endDate,
@@ -158,6 +163,16 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
 
         emit ProposalCreated(proposalId, _msgSender(), _startDate, _endDate, _metadata, _actions, _allowFailureMap);
+    }
+
+    function createProposal(
+        bytes memory _metadata,
+        Action[] memory _actions,
+        uint64 _startDate,
+        uint64 _endDate,
+        bytes memory _data
+    ) external returns (uint256 proposalId) {
+        revert UseCreateE3RequestInstead();
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
