@@ -58,7 +58,7 @@ contract MyPluginTest is TestBase {
         );
 
         assertEq(plugin.numberOfProposals(), 1);
-        
+
         vm.stopPrank();
     }
 }

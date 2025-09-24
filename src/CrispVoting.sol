@@ -179,13 +179,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         emit ProposalCreated(proposalId, _msgSender(), _startDate, _endDate, _metadata, _actions, _allowFailureMap);
     }
 
-    function createProposal(
-        bytes memory,
-        Action[] memory,
-        uint64,
-        uint64,
-        bytes memory 
-    ) external returns (uint256) {
+    function createProposal(bytes memory, Action[] memory, uint64, uint64, bytes memory) external returns (uint256) {
         revert UseCreateE3RequestInstead();
     }
 
