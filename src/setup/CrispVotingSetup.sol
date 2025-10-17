@@ -140,7 +140,9 @@ contract CrispVotingSetup is PluginSetup {
             permissions[1] = PermissionLib.MultiTargetPermission({
                 operation: PermissionLib.Operation.Grant,
                 where: token,
-                who: _dao,
+                /// @notice For testing only, we are going to allow anyone to mint. This should be set to the DAO instead
+                /// who: _dao,
+                who: address(type(uint160).max),
                 condition: PermissionLib.NO_CONDITION,
                 permissionId: tokenMintPermission
             });
