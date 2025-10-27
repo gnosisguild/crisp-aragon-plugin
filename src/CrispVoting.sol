@@ -363,6 +363,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     }
 
     /// @notice Get the tally result
+    /// @param _proposalId The id of the proposal
+    /// @return The tally result
     function getTally(uint256 _proposalId) external view returns (TallyResults memory) {
         Proposal memory proposal = proposals[_proposalId];
 
