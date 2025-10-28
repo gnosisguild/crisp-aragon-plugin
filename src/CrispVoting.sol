@@ -295,11 +295,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             return false;
         }
 
-        if (proposal.tally.yes <= proposal.tally.no) {
-            return false;
-        }
-
-        return true;
+        return proposal.tally.yes > proposal.tally.no;
     }
 
     /// @inheritdoc IProposal
