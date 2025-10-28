@@ -4,14 +4,14 @@ pragma solidity ^0.8.29;
 
 import {Action} from "@aragon/osx/core/dao/DAO.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
-import {IEnclave} from "@enclave-e3/contracts/contracts/interfaces/IEnclave.sol";
-import {IE3Program} from "@enclave-e3/contracts/contracts/interfaces/IE3Program.sol";
 import {ProposalUpgradeable} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/ProposalUpgradeable.sol";
 import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import {IProposal} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/IProposal.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 
 import {ICrispVoting} from "./ICrispVoting.sol";
+import {IEnclave} from "./IEnclave.sol";
+import {IE3Program, E3} from "./IE3.sol";
 
 /// @title My Upgradeable Plugin
 /// @notice A plugin that exposes a permissioned function to store a number and a function that makes the DAO execute an action.
@@ -121,6 +121,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         /// @notice Decode the data
         (uint256 _allowFailureMap, uint256[2] memory _startWindow) = abi.decode(_data, (uint256, uint256[2]));
 
+        bytes memory customParams = abi.encode(address(votingToken), votingSettings.minProposerVotingPower);
+
         // we need to move this to own scope to avoid stack too deep
         {
             IEnclave.E3RequestParams memory requestParams = IEnclave.E3RequestParams({
@@ -130,7 +132,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
                 duration: _endDate - _startDate,
                 e3Program: IE3Program(crispProgramAddress),
                 e3ProgramParams: crispProgramParams,
-                computeProviderParams: computeProviderParams
+                computeProviderParams: computeProviderParams,
+                customParams: customParams
             });
 
             // send the request to Enclave
@@ -282,7 +285,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         return _canExecute(_proposalId);
     }
 
-    // @todo unmock this
     /// @notice Internal checks to determine whether a proposal can be executed or not
     /// @param _proposalId The ID of the proposal to be checked
     /// @return Returns `true` if the proposal can be executed, otherwise false
@@ -293,17 +295,32 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             return false;
         }
 
-        return true;
+        return proposal.tally.yes > proposal.tally.no;
     }
 
     /// @inheritdoc IProposal
     function execute(uint256 _proposalId) external {
-        // sanity checks first
+        Proposal storage proposal = proposals[_proposalId];
+
+        E3 memory e3 = enclave.getE3(proposal.e3Id);
+
+        uint256 inputsCount = enclave.inputsCount(proposal.e3Id);
+
+        // Decode the first u64 (8 bytes) in little endian format
+        // This represents the sum of all encrypted votes (number of '1's = Option 2 votes)
+        uint256 option2 = decodeLittleEndianU64(e3.plaintextOutput, 0);
+
+        // Calculate Option 1 votes
+        uint256 option1 = inputsCount - option2;
+
+        // now store the tally
+        proposal.tally.yes = option1;
+        proposal.tally.no = option2;
+
+        // check if we can execute it3
         if (!_canExecute(_proposalId)) {
             revert ProposalExecutionForbidden(_proposalId);
         }
-
-        Proposal storage proposal = proposals[_proposalId];
 
         /// @notice we set the proposal as executed so it cannot be executed again
         proposal.executed = true;
@@ -322,6 +339,48 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
     function customProposalParamsABI() external pure returns (string memory) {
         return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
+    }
+
+    /// @notice Decodes a u64 from bytes in little endian format at a given offset
+    /// @param data The bytes array
+    /// @param offset The starting position to read from
+    /// @return The decoded uint64 value
+    function decodeLittleEndianU64(bytes memory data, uint256 offset) public pure returns (uint256) {
+        require(data.length >= offset + 8, "Insufficient data");
+
+        uint256 result = 0;
+
+        // Read 8 bytes in little endian order
+        for (uint8 i = 0; i < 8; i++) {
+            result |= uint256(uint8(data[offset + i])) << (i * 8);
+        }
+
+        return result;
+    }
+
+    /// @notice Get the tally result
+    /// @param _proposalId The id of the proposal
+    /// @return The tally result
+    function getTally(uint256 _proposalId) external view returns (TallyResults memory) {
+        Proposal memory proposal = proposals[_proposalId];
+
+        // if it's not executed then we wouldn't have saved the result
+        if (!proposal.executed) {
+            E3 memory e3 = enclave.getE3(proposal.e3Id);
+
+            uint256 inputsCount = enclave.inputsCount(proposal.e3Id);
+
+            // Decode the first u64 (8 bytes) in little endian format
+            // This represents the sum of all encrypted votes (number of '1's = Option 2 votes)
+            uint256 option2 = decodeLittleEndianU64(e3.plaintextOutput, 0);
+
+            // Calculate Option 1 votes
+            uint256 option1 = inputsCount - option2;
+
+            return TallyResults({yes: option1, no: option2});
+        }
+
+        return proposals[_proposalId].tally;
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables
