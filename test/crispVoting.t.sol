@@ -18,7 +18,6 @@ contract MyPluginTest is TestBase {
     /// @notice these are the addresses when deploying on a local hardhat network
     address crispProgramAddress = 0x26fd7066b28C0e18db3Bbfb7163f16e58597C273;
     address enclaveAddress = 0xeF857ba8231E4B8ea4E5DC9CC0891D70BC8E35B8;
-    address filterAddress = 0xbbdF6af7EBe4Ad730C726af2f40dAa867B2C0D35;
 
     bytes crispProgramParams =
         "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000fc00100000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000003fffffff000001";
@@ -29,7 +28,6 @@ contract MyPluginTest is TestBase {
         dao: dao,
         token: address(0),
         enclave: enclaveAddress,
-        filter: filterAddress,
         threshold: [uint32(2), uint32(3)],
         crispProgramAddress: crispProgramAddress,
         crispProgramParams: crispProgramParams,
