@@ -5,6 +5,8 @@
 // or FITNESS FOR A PARTICULAR PURPOSE.
 pragma solidity >=0.8.27;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import {E3, IE3Program} from "./IE3.sol";
 
 interface IEnclave {
@@ -200,4 +202,16 @@ interface IEnclave {
     /// @param e3Id ID of the E3.
     /// @return count The count of inputs published.
     function inputsCount(uint256 e3Id) external view returns (uint256 count);
+
+    /// @notice Get the Fee token contract.
+    /// @return The IERC20 fee token contract.
+    function feeToken() external view returns (IERC20);
+
+    /// @notice This function returns the fee of an E3
+    /// @dev This function MUST revert if the E3 parameters are invalid.
+    /// @param e3Params the struct representing the E3 request parameters
+    /// @return fee the fee of the E3
+    function getE3Quote(
+        E3RequestParams calldata e3Params
+    ) external view returns (uint256 fee);
 }

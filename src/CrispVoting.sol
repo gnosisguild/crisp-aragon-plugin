@@ -8,6 +8,10 @@ import {ProposalUpgradeable} from "@aragon/osx-commons-contracts/src/plugin/exte
 import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import {IProposal} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/IProposal.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {ICrispVoting} from "./ICrispVoting.sol";
 import {IEnclave} from "./IEnclave.sol";
@@ -21,6 +25,8 @@ import {IE3Program, E3} from "./IE3.sol";
 contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting {
     /// @notice used to cast uint256 to uint64 safely
     using SafeCastUpgradeable for uint256;
+    /// @notice used to perform safe ERC20 operations
+    using SafeERC20 for IERC20;
 
     /// @notice The manager permission id
     bytes32 public constant MANAGER_PERMISSION_ID = keccak256("MANAGER_PERMISSION");
@@ -32,6 +38,9 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
     /// @notice The enclave contract reference
     IEnclave public enclave;
+
+    /// @notice The token used to pay for Enclave fees
+    IERC20 public enclaveFeeToken;
 
     /// @notice An
     /// [OpenZeppelin `Votes`](https://docs.openzeppelin.com/contracts/4.x/api/governance#Votes)
@@ -72,6 +81,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
         enclave = IEnclave(_params.enclave);
         votingToken = IVotesUpgradeable(_params.token);
+        enclaveFeeToken = IERC20(enclave.feeToken());
         threshold = _params.threshold;
         crispProgramAddress = _params.crispProgramAddress;
         crispProgramParams = _params.crispProgramParams;
@@ -94,8 +104,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         uint64 _startDate,
         uint64 _endDate,
         bytes memory _data
-    ) external returns (uint256 proposalId) {
-        
+    ) external returns (uint256 proposalId) {        
         /// @notice Create a deterministic proposal id
         proposalId = _createProposalId(keccak256(abi.encode(_actions, _metadata)));
 
@@ -134,6 +143,13 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
                 computeProviderParams: computeProviderParams,
                 customParams: customParams
             });
+
+            // calculate the fee
+            uint256 fee = enclave.getE3Quote(requestParams);
+            // take it from the caller
+            enclaveFeeToken.safeTransferFrom(_msgSender(), address(this), fee);
+            // approve the enclave contract to take the fee
+            enclaveFeeToken.approve(address(enclave), fee);
 
             // send the request to Enclave
             (uint256 e3Id,) = enclave.request(requestParams);
