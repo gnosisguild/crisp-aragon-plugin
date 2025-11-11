@@ -48,7 +48,7 @@ contract MyPluginTest is TestBase {
 
         IERC20Mint(enclaveFeeToken).mint(alice, 10e6);
         IERC20Mint(enclaveFeeToken).approve(address(plugin), 10e6);
-        
+
         // It Should create a new E3 request
         plugin.createProposal(
             bytes(""),
