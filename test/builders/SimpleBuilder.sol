@@ -61,7 +61,6 @@ contract SimpleBuilder is TestBase {
 
         address crispProgramAddress = 0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1;
         address enclaveAddress = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
-        address filterAddress = 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9;
 
         bytes memory crispProgramParams =
             "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000fc00100000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000003fffffff000001";
@@ -72,7 +71,6 @@ contract SimpleBuilder is TestBase {
             dao: dao,
             token: address(governanceERC20Base),
             enclave: enclaveAddress,
-            filter: filterAddress,
             threshold: threshold,
             crispProgramAddress: crispProgramAddress,
             crispProgramParams: crispProgramParams,

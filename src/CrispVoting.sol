@@ -72,7 +72,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
         enclave = IEnclave(_params.enclave);
         votingToken = IVotesUpgradeable(_params.token);
-        filter = _params.filter;
         threshold = _params.threshold;
         crispProgramAddress = _params.crispProgramAddress;
         crispProgramParams = _params.crispProgramParams;
@@ -89,13 +88,14 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     /// @param _data The additional abi-encoded data to include more necessary fields
     /// This includes whether to allow failures, and the enclave request start window details
     /// @return proposalId The id of the proposal
-    function createE3Request(
+    function createProposal(
         bytes memory _metadata,
         Action[] memory _actions,
         uint64 _startDate,
         uint64 _endDate,
         bytes memory _data
-    ) external payable returns (uint256 proposalId) {
+    ) external returns (uint256 proposalId) {
+        
         /// @notice Create a deterministic proposal id
         proposalId = _createProposalId(keccak256(abi.encode(_actions, _metadata)));
 
@@ -126,7 +126,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         // we need to move this to own scope to avoid stack too deep
         {
             IEnclave.E3RequestParams memory requestParams = IEnclave.E3RequestParams({
-                filter: filter,
                 threshold: threshold,
                 startWindow: _startWindow,
                 duration: _endDate - _startDate,
@@ -137,7 +136,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             });
 
             // send the request to Enclave
-            (uint256 e3Id,) = enclave.request{value: msg.value}(requestParams);
+            (uint256 e3Id,) = enclave.request(requestParams);
 
             // temp variables to store the proposal data
             TallyResults memory tallyResults = TallyResults({yes: 0, no: 0});
@@ -166,16 +165,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
 
         emit ProposalCreated(proposalId, _msgSender(), _startDate, _endDate, _metadata, _actions, _allowFailureMap);
-    }
-
-    function createProposal(
-        bytes memory _metadata,
-        Action[] memory _actions,
-        uint64 _startDate,
-        uint64 _endDate,
-        bytes memory _data
-    ) external returns (uint256 proposalId) {
-        revert UseCreateE3RequestInstead();
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.

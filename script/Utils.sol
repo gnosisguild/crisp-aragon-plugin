@@ -16,7 +16,6 @@ library Utils {
 
     struct CrispEnvVariables {
         address enclave;
-        address registryFilter;
         address crispProgramAddress;
         ICrispVoting.VotingSettings votingSettings;
         IPlugin.TargetConfig targetConfig;
@@ -30,7 +29,6 @@ library Utils {
             IPlugin.TargetConfig({target: address(0), operation: IPlugin.Operation.Call});
 
         crispEnvVariables.enclave = VM.envAddress("ENCLAVE_ADDRESS");
-        crispEnvVariables.registryFilter = VM.envAddress("FILTER_ADDRESS");
         crispEnvVariables.crispProgramAddress = VM.envAddress("CRISP_PROGRAM_ADDRESS");
         crispEnvVariables.votingSettings = ICrispVoting.VotingSettings({
             minProposerVotingPower: VM.envUint("MINIMUM_PROPOSER_VOTING_POWER"),
