@@ -11,9 +11,10 @@ import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/mat
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {ICrispVoting} from "./ICrispVoting.sol";
 import {IEnclave} from "./IEnclave.sol";
-import {IE3Program, E3} from "./IE3.sol";
+import {E3, IE3Program} from "./IE3.sol";
+import {ICrispVoting} from "./ICrispVoting.sol";
+import {ICRISP} from "./ICrisp.sol";
 
 /// @title My Upgradeable Plugin
 /// @notice A plugin that exposes a permissioned function to store a number and a function that makes the DAO execute an action.
@@ -305,20 +306,11 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     function execute(uint256 _proposalId) external {
         Proposal storage proposal = proposals[_proposalId];
 
-        E3 memory e3 = enclave.getE3(proposal.e3Id);
-
-        uint256 inputsCount = enclave.inputsCount(proposal.e3Id);
-
-        // Decode the first u64 (8 bytes) in little endian format
-        // This represents the sum of all encrypted votes (number of '1's = Option 2 votes)
-        uint256 option2 = decodeLittleEndianU64(e3.plaintextOutput, 0);
-
-        // Calculate Option 1 votes
-        uint256 option1 = inputsCount - option2;
+        (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
 
         // now store the tally
-        proposal.tally.yes = option1;
-        proposal.tally.no = option2;
+        proposal.tally.yes = yes;
+        proposal.tally.no = no;
 
         // check if we can execute it3
         if (!_canExecute(_proposalId)) {
@@ -344,23 +336,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
     }
 
-    /// @notice Decodes a u64 from bytes in little endian format at a given offset
-    /// @param data The bytes array
-    /// @param offset The starting position to read from
-    /// @return The decoded uint64 value
-    function decodeLittleEndianU64(bytes memory data, uint256 offset) public pure returns (uint256) {
-        require(data.length >= offset + 8, "Insufficient data");
-
-        uint256 result = 0;
-
-        // Read 8 bytes in little endian order
-        for (uint8 i = 0; i < 8; i++) {
-            result |= uint256(uint8(data[offset + i])) << (i * 8);
-        }
-
-        return result;
-    }
-
     /// @notice Get the tally result
     /// @param _proposalId The id of the proposal
     /// @return The tally result
@@ -369,18 +344,9 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
         // if it's not executed then we wouldn't have saved the result
         if (!proposal.executed) {
-            E3 memory e3 = enclave.getE3(proposal.e3Id);
+            (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
 
-            uint256 inputsCount = enclave.inputsCount(proposal.e3Id);
-
-            // Decode the first u64 (8 bytes) in little endian format
-            // This represents the sum of all encrypted votes (number of '1's = Option 2 votes)
-            uint256 option2 = decodeLittleEndianU64(e3.plaintextOutput, 0);
-
-            // Calculate Option 1 votes
-            uint256 option1 = inputsCount - option2;
-
-            return TallyResults({yes: option1, no: option2});
+            return TallyResults({yes: yes, no: no});
         }
 
         return proposals[_proposalId].tally;

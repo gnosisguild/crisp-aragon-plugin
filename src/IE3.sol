@@ -5,33 +5,37 @@
 // or FITNESS FOR A PARTICULAR PURPOSE.
 pragma solidity >=0.8.27;
 
-interface IInputValidator {
-    /// @notice This function should be called by the Enclave contract to validate the
-    /// input of a computation.
-    /// @param sender The account that is submitting the input.
-    /// @param data The input to be verified.
-    /// @return input The decoded, policy-approved application payload.
-    function validate(address sender, bytes memory data) external returns (bytes memory input);
-}
-
+/**
+ * @title IE3Program
+ * @notice Interface for E3 program validation and verification
+ * @dev E3 programs define the computation logic and validation rules for encrypted execution environments
+ */
 interface IE3Program {
-    /// @notice This function should be called by the Enclave contract to validate the computation parameters.
-    /// @param e3Id ID of the E3.
-    /// @param seed Seed for the computation.
-    /// @param e3ProgramParams ABI encoded computation parameters.
-    /// @param computeProviderParams ABI encoded compute provider parameters.
-    /// @return encryptionSchemeId ID of the encryption scheme to be used for the computation.
-    /// @return inputValidator The input validator to be used for the computation.
+    /// @notice Validate E3 computation parameters and return encryption scheme and input validator
+    /// @dev This function is called by the Enclave contract during E3 request to configure the computation
+    /// @param e3Id ID of the E3 computation
+    /// @param seed Random seed for the computation
+    /// @param e3ProgramParams ABI encoded E3 program parameters
+    /// @param computeProviderParams ABI encoded compute provider parameters
+    /// @return encryptionSchemeId ID of the encryption scheme to be used for the computation
     function validate(uint256 e3Id, uint256 seed, bytes calldata e3ProgramParams, bytes calldata computeProviderParams)
         external
-        returns (bytes32 encryptionSchemeId, IInputValidator inputValidator);
+        returns (bytes32 encryptionSchemeId);
 
-    /// @notice This function should be called by the Enclave contract to verify the decrypted output of an E3.
-    /// @param e3Id ID of the E3.
-    /// @param ciphertextOutputHash The keccak256 hash of output data to be verified.
-    /// @param proof ABI encoded data to verify the ciphertextOutputHash.
-    /// @return success Whether the output data is valid.
+    /// @notice Verify the ciphertext output of an E3 computation
+    /// @dev This function is called by the Enclave contract when ciphertext output is published
+    /// @param e3Id ID of the E3 computation
+    /// @param ciphertextOutputHash The keccak256 hash of output data to be verified
+    /// @param proof ABI encoded data to verify the ciphertextOutputHash
+    /// @return success Whether the output data is valid
     function verify(uint256 e3Id, bytes32 ciphertextOutputHash, bytes memory proof) external returns (bool success);
+
+    /// @notice Validate and process input data for a computation
+    /// @dev This function is called by the Enclave contract when input is published
+    /// @param e3Id ID of the E3 computation
+    /// @param sender The account that is submitting the input
+    /// @param data The input data to be validated
+    function validateInput(uint256 e3Id, address sender, bytes memory data) external;
 }
 
 interface IDecryptionVerifier {
@@ -47,22 +51,26 @@ interface IDecryptionVerifier {
         returns (bool success);
 }
 
-/// @title E3 struct
-/// @notice This struct represents an E3 computation.
-/// @param threshold M/N threshold for the committee.
-/// @param requestBlock Block number when the E3 was requested.
-/// @param startWindow Start window for the computation: index zero is minimum, index 1 is the maxium.
-/// @param duration Duration of the E3.
-/// @param expiration Timestamp when committee duties expire.
-/// @param e3Program Address of the E3 Program contract.
-/// @param e3ProgramParams ABI encoded computation parameters.
-/// @param customParams Arbitrary ABI-encoded application-defined parameters.
-/// @param computeProvider Address of the compute provider contract.
-/// @param inputValidator Address of the input validator contract.
-/// @param decryptionVerifier Address of the output verifier contract.
-/// @param committeeId ID of the selected committee.
-/// @param ciphertextOutput Encrypted output data.
-/// @param plaintextOutput Decrypted output data.
+/**
+ * @title E3
+ * @notice Represents a complete E3 (Encrypted Execution Environment) computation request and its lifecycle
+ * @dev This struct tracks all parameters, state, and results of an encrypted computation
+ *      from request through completion
+ * @param seed Random seed for committee selection and computation initialization
+ * @param threshold M/N threshold for the committee (M required out of N total members)
+ * @param requestBlock Block number when the E3 computation was requested
+ * @param startWindow Start window for the computation: index 0 is minimum block, index 1 is the maximum block
+ * @param duration Duration of the E3 computation in blocks or time units
+ * @param expiration Timestamp when committee duties expire and computation is considered failed
+ * @param encryptionSchemeId Identifier for the encryption scheme used in this computation
+ * @param e3Program Address of the E3 Program contract that validates and verifies the computation
+ * @param e3ProgramParams ABI encoded computation parameters specific to the E3 program
+ * @param customParams Arbitrary ABI-encoded application-defined parameters.
+ * @param decryptionVerifier Address of the output verifier contract for decryption verification
+ * @param committeePublicKey The public key of the selected committee for this computation
+ * @param ciphertextOutput Hash of the encrypted output data produced by the computation
+ * @param plaintextOutput Decrypted output data after committee decryption
+ */
 struct E3 {
     uint256 seed;
     uint32[2] threshold;
@@ -74,7 +82,6 @@ struct E3 {
     IE3Program e3Program;
     bytes e3ProgramParams;
     bytes customParams;
-    IInputValidator inputValidator;
     IDecryptionVerifier decryptionVerifier;
     bytes32 committeePublicKey;
     bytes32 ciphertextOutput;
