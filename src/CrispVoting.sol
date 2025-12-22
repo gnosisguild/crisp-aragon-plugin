@@ -51,9 +51,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
     /// @notice A mapping between proposal IDs and proposal information.
     mapping(uint256 => Proposal) internal proposals;
-
-    /// @notice The Enclave ciphernode filter contract
-    address private filter;
+    
     /// @notice The ciphernode threshold
     uint32[2] private threshold;
     /// @notice The address of the E3 Program
@@ -299,7 +297,9 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             return false;
         }
 
-        return proposal.tally.yes > proposal.tally.no;
+        (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
+
+        return yes > no;
     }
 
     /// @inheritdoc IProposal
@@ -350,6 +350,13 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
 
         return proposals[_proposalId].tally;
+    }
+
+    /// @notice Check if a proposal has been executed
+    /// @param _proposalId The id of the proposal
+    /// @return True if the proposal has been executed, false otherwise
+    function isProposalExecuted(uint256 _proposalId) external view returns (bool) {
+        return proposals[_proposalId].executed;
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables
