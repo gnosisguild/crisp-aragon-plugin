@@ -16,7 +16,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IEnclave} from "./IEnclave.sol";
 import {E3, IE3Program} from "./IE3.sol";
 import {ICrispVoting} from "./ICrispVoting.sol";
-import {ICRISP} from "./ICrisp.sol";
+import {ICRISP} from "./ICRISP.sol";
 
 /// @title My Upgradeable Plugin
 /// @notice A plugin that exposes a permissioned function to store a number and a function that makes the DAO execute an action.
