@@ -51,7 +51,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
     /// @notice A mapping between proposal IDs and proposal information.
     mapping(uint256 => Proposal) internal proposals;
-    
+
     /// @notice The ciphernode threshold
     uint32[2] private threshold;
     /// @notice The address of the E3 Program
@@ -141,7 +141,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
                 customParams: customParams
             });
 
-            // calculate the fee
+            // calculate the E3 fee
             uint256 fee = enclave.getE3Quote(requestParams);
             // take it from the caller
             enclaveFeeToken.safeTransferFrom(_msgSender(), address(this), fee);
@@ -161,7 +161,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             });
 
             /// @notice Store the data
-            proposal.executed = false;
             proposal.tally = tallyResults;
             proposal.parameters = proposalParameters;
             proposal.allowFailureMap = _allowFailureMap;
@@ -178,6 +177,51 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
 
         emit ProposalCreated(proposalId, _msgSender(), _startDate, _endDate, _metadata, _actions, _allowFailureMap);
+    }
+
+    /// @inheritdoc IProposal
+    function execute(uint256 _proposalId) external {
+        Proposal storage proposal = proposals[_proposalId];
+
+        (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
+
+        // now store the tally
+        proposal.tally.yes = yes;
+        proposal.tally.no = no;
+
+        // check if we can execute it3
+        if (!_canExecute(_proposalId)) {
+            revert ProposalExecutionForbidden(_proposalId);
+        }
+
+        /// @notice we set the proposal as executed so it cannot be executed again
+        proposal.executed = true;
+
+        // just execute it
+        _execute(
+            proposal.targetConfig.target,
+            bytes32(_proposalId),
+            proposal.actions,
+            proposal.allowFailureMap,
+            proposal.targetConfig.operation
+        );
+
+        emit ProposalExecuted(_proposalId);
+    }
+
+    /// @notice Returns whether the proposal has succeeded or not.
+    /// @param _proposalId The id of the proposal.
+    /// @return Whether the proposal has succeeded or not.
+    function hasSucceeded(uint256 _proposalId) external view returns (bool) {
+        return proposals[_proposalId].executed;
+    }
+
+    /// @notice Returns the proposal data for a given proposal ID.
+    /// @param _proposalId The ID of the proposal to retrieve.
+    /// @return proposal_ The proposal data including execution status, parameters, tally results,
+    /// actions, and other metadata.
+    function getProposal(uint256 _proposalId) external view returns (Proposal memory proposal_) {
+        proposal_ = proposals[_proposalId];
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -207,21 +251,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         return votingSettings.minDuration;
     }
 
-    /// @notice Returns whether the proposal has succeeded or not.
-    /// @param _proposalId The id of the proposal.
-    /// @return Whether the proposal has succeeded or not.
-    function hasSucceeded(uint256 _proposalId) external view returns (bool) {
-        return proposals[_proposalId].executed;
-    }
-
-    /// @notice Returns the proposal data for a given proposal ID.
-    /// @param _proposalId The ID of the proposal to retrieve.
-    /// @return proposal_ The proposal data including execution status, parameters, tally results,
-    /// actions, and other metadata.
-    function getProposal(uint256 _proposalId) external view returns (Proposal memory proposal_) {
-        proposal_ = proposals[_proposalId];
-    }
-
     /// @inheritdoc ICrispVoting
     function minProposerVotingPower() public view returns (uint256) {
         return votingSettings.minProposerVotingPower;
@@ -230,6 +259,36 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     /// @inheritdoc ICrispVoting
     function totalVotingPower(uint256 _blockNumber) public view returns (uint256) {
         return votingToken.getPastTotalSupply(_blockNumber);
+    }
+
+    /// @inheritdoc IProposal
+    function canExecute(uint256 _proposalId) public view returns (bool) {
+        if (!_proposalExists(_proposalId)) {
+            revert NonexistentProposal(_proposalId);
+        }
+
+        return _canExecute(_proposalId);
+    }
+
+    /// @notice Get the custom proposal parameters ABI
+    function customProposalParamsABI() external pure returns (string memory) {
+        return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
+    }
+
+    /// @notice Get the tally result
+    /// @param _proposalId The id of the proposal
+    /// @return The tally result
+    function getTally(uint256 _proposalId) external view returns (TallyResults memory) {
+        Proposal memory proposal = proposals[_proposalId];
+
+        // if it's not executed then we wouldn't have saved the result
+        if (!proposal.executed) {
+            (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
+
+            return TallyResults({yes: yes, no: no});
+        }
+
+        return proposals[_proposalId].tally;
     }
 
     /// @notice Validates and returns the proposal vote dates.
@@ -271,22 +330,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
     }
 
-    /// @notice Checks if proposal exists or not.
-    /// @param _proposalId The ID of the proposal.
-    /// @return Returns `true` if proposal exists, otherwise false.
-    function _proposalExists(uint256 _proposalId) private view returns (bool) {
-        return proposals[_proposalId].parameters.snapshotBlock != 0;
-    }
-
-    /// @inheritdoc IProposal
-    function canExecute(uint256 _proposalId) public view returns (bool) {
-        if (!_proposalExists(_proposalId)) {
-            revert NonexistentProposal(_proposalId);
-        }
-
-        return _canExecute(_proposalId);
-    }
-
     /// @notice Internal checks to determine whether a proposal can be executed or not
     /// @param _proposalId The ID of the proposal to be checked
     /// @return Returns `true` if the proposal can be executed, otherwise false
@@ -297,66 +340,17 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             return false;
         }
 
+        // Get the tally from the CRISP program (It will be fetched from the Enclave contract and decoded)
         (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
 
         return yes > no;
     }
 
-    /// @inheritdoc IProposal
-    function execute(uint256 _proposalId) external {
-        Proposal storage proposal = proposals[_proposalId];
-
-        (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
-
-        // now store the tally
-        proposal.tally.yes = yes;
-        proposal.tally.no = no;
-
-        // check if we can execute it3
-        if (!_canExecute(_proposalId)) {
-            revert ProposalExecutionForbidden(_proposalId);
-        }
-
-        /// @notice we set the proposal as executed so it cannot be executed again
-        proposal.executed = true;
-
-        // just execute it
-        _execute(
-            proposal.targetConfig.target,
-            bytes32(_proposalId),
-            proposal.actions,
-            proposal.allowFailureMap,
-            proposal.targetConfig.operation
-        );
-
-        emit ProposalExecuted(_proposalId);
-    }
-
-    function customProposalParamsABI() external pure returns (string memory) {
-        return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
-    }
-
-    /// @notice Get the tally result
-    /// @param _proposalId The id of the proposal
-    /// @return The tally result
-    function getTally(uint256 _proposalId) external view returns (TallyResults memory) {
-        Proposal memory proposal = proposals[_proposalId];
-
-        // if it's not executed then we wouldn't have saved the result
-        if (!proposal.executed) {
-            (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
-
-            return TallyResults({yes: yes, no: no});
-        }
-
-        return proposals[_proposalId].tally;
-    }
-
-    /// @notice Check if a proposal has been executed
-    /// @param _proposalId The id of the proposal
-    /// @return True if the proposal has been executed, false otherwise
-    function isProposalExecuted(uint256 _proposalId) external view returns (bool) {
-        return proposals[_proposalId].executed;
+    /// @notice Checks if proposal exists or not.
+    /// @param _proposalId The ID of the proposal.
+    /// @return Returns `true` if proposal exists, otherwise false.
+    function _proposalExists(uint256 _proposalId) private view returns (bool) {
+        return proposals[_proposalId].parameters.snapshotBlock != 0;
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables

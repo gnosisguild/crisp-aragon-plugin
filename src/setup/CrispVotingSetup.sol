@@ -160,7 +160,7 @@ contract CrispVotingSetup is PluginSetup {
         // Request reverting the granted permissions
         permissions = new PermissionLib.MultiTargetPermission[](2);
 
-        // _managerAddress has MANAGER_PERMISSION_ID on the plugin
+        // the plugin has the Execute permission on the DAO. This needs to be revoked.
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _dao,

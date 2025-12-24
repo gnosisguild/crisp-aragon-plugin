@@ -11,12 +11,12 @@ import {DaoUnauthorized} from "@aragon/osx-commons-contracts/src/permission/auth
 import {CrispVoting} from "../../src/CrispVoting.sol";
 import {IERC20Mint} from "../../src/IERC20Mint.sol";
 
-contract MyPluginTest is TestBase {
+contract MyPluginTestFork is TestBase {
     DAO dao;
     CrispVoting plugin;
 
     /// @notice these are the addresses when deploying on a local hardhat network
-    address crispProgramAddress = 0xc3e53F4d16Ae77Db1c982e75a937B9f60FE63690;
+    address crispProgramAddress = 0x67d269191c92Caf3cD7723F116c85e6E9bf55933;
     address enclaveAddress = 0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0;
     address enclaveFeeToken = 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0;
 

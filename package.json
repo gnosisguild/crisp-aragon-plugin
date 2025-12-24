@@ -25,8 +25,7 @@
     "lint:sol:fix": "solhint --max-warnings 0 --fix --noPrompt \"{script,src,test}/**/*.sol\"",
     "fmt:check": "forge fmt --check && prettier --check \"**/*.{js,json,md,ts,yml}\"",
     "fmt:write": "forge fmt && prettier --write \"**/*.{js,json,md,ts,yml}\"",
-    "test": "forge test -vvv --no-match-path ./test/fork-tests/*",
-    "test:fork": "forge test -vvv --match-path ./test/fork-tests/* --fork-url http://localhost:8545",
+    "test": "forge test -vvv --fork-url http://localhost:8545",
     "test:coverage": "forge coverage",
     "test:coverage:report": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage",
     "prepare": "husky"
