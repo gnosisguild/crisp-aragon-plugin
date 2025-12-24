@@ -93,13 +93,14 @@ contract CrispVotingScript is Script {
     }
 
     function deployPluginRepo(address pluginSetup) public returns (PluginRepo pluginRepo) {
-        pluginRepo = PluginRepoFactory(pluginRepoFactory).createPluginRepoWithFirstVersion(
-            nameWithEntropy,
-            pluginSetup,
-            msg.sender,
-            "1", // TODO: Give these actual values on prod
-            "1"
-        );
+        pluginRepo = PluginRepoFactory(pluginRepoFactory)
+            .createPluginRepoWithFirstVersion(
+                nameWithEntropy,
+                pluginSetup,
+                msg.sender,
+                "1", // TODO: Give these actual values on prod
+                "1"
+            );
     }
 
     function getDAOSettings() public view returns (IDAOFactory.DAOSettings memory) {

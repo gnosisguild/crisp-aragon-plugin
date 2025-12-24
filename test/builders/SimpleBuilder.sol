@@ -39,11 +39,9 @@ contract SimpleBuilder is TestBase {
     function build() public returns (DAO dao, CrispVoting plugin) {
         // Deploy the DAO with `daoOwner` as ROOT
         dao = DAO(
-            payable(
-                ProxyLib.deployUUPSProxy(
+            payable(ProxyLib.deployUUPSProxy(
                     address(DAO_BASE), abi.encodeCall(DAO.initialize, ("", daoOwner, address(0x0), ""))
-                )
-            )
+                ))
         );
 
         address[] memory receivers = new address[](1);

@@ -45,10 +45,7 @@ interface IDecryptionVerifier {
     /// @param plaintextOutputHash The keccak256 hash of the plaintext output to be verified.
     /// @param proof ABI encoded proof of the given output hash.
     /// @return success Whether or not the plaintextOutputHash was successfully verified.
-    function verify(uint256 e3Id, bytes32 plaintextOutputHash, bytes memory proof)
-        external
-        view
-        returns (bool success);
+    function verify(uint256 e3Id, bytes32 plaintextOutputHash, bytes memory proof) external view returns (bool success);
 }
 
 /**
