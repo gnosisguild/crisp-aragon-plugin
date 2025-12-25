@@ -314,34 +314,6 @@ verify-sourcify: broadcast/Deploy.s.sol/$(CHAIN_ID)/run-latest.json ## Verify th
 	forge build
 	bash $(VERIFY_CONTRACTS_SCRIPT) $(CHAIN_ID) $(VERIFIER) "" ""
 
-##
-
-.PHONY: refund
-refund: ## Refund the remaining balance left on the deployment account
-	@echo "Refunding the remaining balance on $(DEPLOYMENT_ADDRESS)"
-	@if [ -z $(REFUND_ADDRESS) -o $(REFUND_ADDRESS) = "0x0000000000000000000000000000000000000000" ]; then \
-		echo "- The refund address is empty" ; \
-		exit 1; \
-	fi
-	@BALANCE=$(shell cast balance $(DEPLOYMENT_ADDRESS) --rpc-url $(RPC_URL)) && \
-		GAS_PRICE=$(shell cast gas-price --rpc-url $(RPC_URL)) && \
-		REMAINING=$$(echo "$$BALANCE - $$GAS_PRICE * 21000" | bc) && \
-		\
-		ENOUGH_BALANCE=$$(echo "$$REMAINING > 0" | bc) && \
-		if [ "$$ENOUGH_BALANCE" = "0" ]; then \
-			echo -e "- No balance can be refunded: $$BALANCE wei\n- Minimum balance: $${REMAINING:1} wei" ; \
-			exit 1; \
-		fi ; \
-		echo -n -e "Summary:\n- Refunding: $$REMAINING (wei)\n- Recipient: $(REFUND_ADDRESS)\n\nContinue? (y/N) " && \
-		\
-		read CONFIRM && \
-		if [ "$$CONFIRM" != "y" ]; then echo "Aborting" ; exit 1; fi ; \
-		\
-		cast send --private-key $(DEPLOYMENT_PRIVATE_KEY) \
-			--rpc-url $(RPC_URL) \
-			--value $$REMAINING \
-			$(REFUND_ADDRESS)
-
 # Other: Troubleshooting and helpers
 
 .PHONY: gas-price

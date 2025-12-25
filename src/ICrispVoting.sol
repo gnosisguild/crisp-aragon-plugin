@@ -127,11 +127,6 @@ interface ICrispVoting {
     /// @return The proposal data.
     function getProposal(uint256 _proposalId) external view returns (Proposal memory);
 
-    /// @notice Check if a proposal has been executed
-    /// @param _proposalId The id of the proposal
-    /// @return True if the proposal has been executed, false otherwise
-    function isProposalExecuted(uint256 _proposalId) external view returns (bool);
-
     /// @notice Get the tally result
     /// @param _proposalId The id of the proposal
     /// @return The tally result

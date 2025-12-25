@@ -104,9 +104,8 @@ contract CrispVotingSetup is PluginSetup {
                 // User already has a token. We need to wrap it in
                 // GovernanceWrappedERC20 in order to make the token
                 // include governance functionality.
-                GovernanceWrappedERC20(token).initialize(
-                    IERC20Upgradeable(tokenSettings.addr), tokenSettings.name, tokenSettings.symbol
-                );
+                GovernanceWrappedERC20(token)
+                    .initialize(IERC20Upgradeable(tokenSettings.addr), tokenSettings.name, tokenSettings.symbol);
             }
         } else {
             // Clone a `GovernanceERC20`.
@@ -160,7 +159,7 @@ contract CrispVotingSetup is PluginSetup {
         // Request reverting the granted permissions
         permissions = new PermissionLib.MultiTargetPermission[](2);
 
-        // _managerAddress has MANAGER_PERMISSION_ID on the plugin
+        // the plugin has the Execute permission on the DAO. This needs to be revoked.
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _dao,
