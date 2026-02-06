@@ -177,7 +177,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
                 startDate: _startDate,
                 endDate: _endDate,
                 snapshotBlock: block.number,
-                minVotingPower: votingSettings.minProposerVotingPower
+                minVotingPower: votingSettings.minProposerVotingPower,
+                minParticipation: votingSettings.minParticipation
             });
             proposal.allowFailureMap = _allowFailureMap;
             proposal.targetConfig = getTargetConfig();

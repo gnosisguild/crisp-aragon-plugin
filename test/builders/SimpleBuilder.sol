@@ -47,7 +47,7 @@ contract SimpleBuilder is TestBase {
         address[] memory receivers = new address[](1);
         receivers[0] = address(msg.sender);
         uint256[] memory amounts = new uint256[](1);
-        amounts[0] = 10e18;
+        amounts[0] = 1e18;
         governanceERC20Base = new GovernanceERC20(
             IDAO(address(dao)),
             "TESTTOKEN",

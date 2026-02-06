@@ -57,12 +57,14 @@ interface ICrispVoting {
     /// @param endDate The end date of the proposal vote.
     /// @param snapshotBlock The number of the block prior to the proposal creation.
     /// @param minVotingPower The minimum voting power needed.
+    /// @param minParticipation The minimum participation needed.
     struct ProposalParameters {
         uint256 numOptions;
         uint64 startDate;
         uint64 endDate;
         uint256 snapshotBlock;
         uint256 minVotingPower;
+        uint256 minParticipation;
     }
 
     /// @notice The parameters for initializing the plugin
