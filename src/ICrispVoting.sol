@@ -28,6 +28,9 @@ interface ICrispVoting {
     /// @param limit The bound limit (start or end date).
     /// @param actual The actual time.
     error DateOutOfBounds(uint64 limit, uint64 actual);
+    /// @notice Thrown when the number of options is less than 2.
+    /// @param numOptions The number of options provided.
+    error InvalidOptionCount(uint256 numOptions);
 
     /// @notice A struct for the voting settings.
     /// @param minProposerVotingPower The minimum voting power needed to propose a vote.
@@ -39,23 +42,23 @@ interface ICrispVoting {
         uint64 minDuration;
     }
 
-    /// @notice A struct for the results of the voting. We read from the Enclave contract and
-    /// store the results here.
-    /// @notice For now we do not support abstain votes so we can reduce the number of greco proofs to be generated.
-    /// Either way, in most governance proposals, abstain votes do not affect the outcome.
-    /// @param yes The number of votes for the "yes" option.
-    /// @param no The number of votes for the "no" option.
+    /// @notice Stores the decoded tally results for all options.
+    /// @param counts An array where counts[i] is the total votes for option i.
+    ///        For a 2-option vote: [yes, no].
+    ///        For a 3-option vote: [yes, no, abstain].
+    ///        For N options: [option0, option1, ..., optionN-1].
     struct TallyResults {
-        uint256 yes;
-        uint256 no;
+        uint256[] counts;
     }
 
     /// @notice A struct for the proposal parameters at the time of proposal creation.
+    /// @param numOptions The number of options for the vote.
     /// @param startDate The start date of the proposal vote.
     /// @param endDate The end date of the proposal vote.
     /// @param snapshotBlock The number of the block prior to the proposal creation.
     /// @param minVotingPower The minimum voting power needed.
     struct ProposalParameters {
+        uint256 numOptions;
         uint64 startDate;
         uint64 endDate;
         uint256 snapshotBlock;
@@ -131,4 +134,9 @@ interface ICrispVoting {
     /// @param _proposalId The id of the proposal
     /// @return The tally result
     function getTally(uint256 _proposalId) external view returns (TallyResults memory);
+
+    /// @notice Returns the index of the option with the most votes.
+    /// @param _proposalId The id of the proposal.
+    /// @return The winning option index.
+    function getWinningOption(uint256 _proposalId) external view returns (uint256);
 }

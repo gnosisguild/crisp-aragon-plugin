@@ -32,6 +32,9 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     /// @notice The manager permission id
     bytes32 public constant MANAGER_PERMISSION_ID = keccak256("MANAGER_PERMISSION");
 
+    /// @notice The denominator for ratio calculations.
+    uint256 internal constant RATIO_BASE = 100;
+
     /// @notice The interface id for the Crisp Voting plugin
     bytes4 internal constant CRISP_VOTING_INTERFACE_ID = this.initialize.selector ^ this.minProposerVotingPower.selector
         ^ this.totalVotingPower.selector ^ this.getVotingToken.selector ^ this.minParticipation.selector
@@ -110,7 +113,6 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         /// @notice Get the proposal storage variable
         Proposal storage proposal = proposals[proposalId];
 
-        // move to own scope to avoid stack too deep
         {
             /// @notice Check if the proposal already exists first
             if (_proposalExists(proposalId)) {
@@ -126,13 +128,28 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             }
         }
 
-        /// @notice Decode the data
-        (uint256 _allowFailureMap, uint256[2] memory _startWindow) = abi.decode(_data, (uint256, uint256[2]));
-
-        bytes memory customParams = abi.encode(address(votingToken), votingSettings.minProposerVotingPower);
-
-        // we need to move this to own scope to avoid stack too deep
         {
+            /// @notice Decode the data
+            (
+                uint256 _allowFailureMap,
+                uint256[2] memory _startWindow,
+                uint256 numOptions,
+                uint256 creditMode,
+                uint256 credits
+            ) = abi.decode(_data, (uint256, uint256[2], uint256, uint256, uint256));
+
+            if (numOptions < 2) {
+                revert InvalidOptionCount(numOptions);
+            }
+
+            bytes memory customParams = abi.encode(
+                address(votingToken),
+                votingSettings.minProposerVotingPower,
+                numOptions,
+                ICRISP.CreditMode(creditMode),
+                credits
+            );
+
             IEnclave.E3RequestParams memory requestParams = IEnclave.E3RequestParams({
                 threshold: threshold,
                 startWindow: _startWindow,
@@ -153,43 +170,38 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             // send the request to Enclave
             (uint256 e3Id,) = enclave.request(requestParams);
 
-            // temp variables to store the proposal data
-            TallyResults memory tallyResults = TallyResults({yes: 0, no: 0});
-            ProposalParameters memory proposalParameters = ProposalParameters({
+            /// @notice Store the data
+            proposal.tally.counts = new uint256[](numOptions);
+            proposal.parameters = ProposalParameters({
+                numOptions: numOptions,
                 startDate: _startDate,
                 endDate: _endDate,
                 snapshotBlock: block.number,
                 minVotingPower: votingSettings.minProposerVotingPower
             });
-
-            /// @notice Store the data
-            proposal.tally = tallyResults;
-            proposal.parameters = proposalParameters;
             proposal.allowFailureMap = _allowFailureMap;
             proposal.targetConfig = getTargetConfig();
             proposal.e3Id = e3Id;
+        }
 
-            for (uint256 i = 0; i < _actions.length;) {
-                proposal.actions.push(_actions[i]);
-
-                unchecked {
-                    ++i;
-                }
+        for (uint256 i = 0; i < _actions.length;) {
+            proposal.actions.push(_actions[i]);
+            unchecked {
+                ++i;
             }
         }
 
-        emit ProposalCreated(proposalId, _msgSender(), _startDate, _endDate, _metadata, _actions, _allowFailureMap);
+        emit ProposalCreated(
+            proposalId, _msgSender(), _startDate, _endDate, _metadata, _actions, proposal.allowFailureMap
+        );
     }
 
     /// @inheritdoc IProposal
     function execute(uint256 _proposalId) external {
         Proposal storage proposal = proposals[_proposalId];
 
-        (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
-
-        // now store the tally
-        proposal.tally.yes = yes;
-        proposal.tally.no = no;
+        uint256[] memory tallyCounts = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
+        proposal.tally.counts = tallyCounts;
 
         // check if we can execute it3
         if (!_canExecute(_proposalId)) {
@@ -285,12 +297,37 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
         // if it's not executed then we wouldn't have saved the result
         if (!proposal.executed) {
-            (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
-
-            return TallyResults({yes: yes, no: no});
+            uint256[] memory counts = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
+            return TallyResults({counts: counts});
         }
 
         return proposals[_proposalId].tally;
+    }
+
+    /// @inheritdoc ICrispVoting
+    function getWinningOption(uint256 _proposalId) external view returns (uint256) {
+        uint256[] memory counts;
+
+        if (proposals[_proposalId].executed) {
+            counts = proposals[_proposalId].tally.counts;
+        } else {
+            counts = ICRISP(crispProgramAddress).decodeTally(proposals[_proposalId].e3Id);
+        }
+
+        uint256 maxCount = 0;
+        uint256 winnerIndex = 0;
+
+        for (uint256 i = 0; i < counts.length;) {
+            if (counts[i] > maxCount) {
+                maxCount = counts[i];
+                winnerIndex = i;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        return winnerIndex;
     }
 
     /// @notice Validates and returns the proposal vote dates.
@@ -338,14 +375,40 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     function _canExecute(uint256 _proposalId) internal view returns (bool) {
         Proposal memory proposal = proposals[_proposalId];
 
+        // can't execute twice
         if (proposal.executed) {
             return false;
         }
 
-        // Get the tally from the CRISP program (It will be fetched from the Enclave contract and decoded)
-        (uint256 yes, uint256 no) = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
+        uint256[] memory counts = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
 
-        return yes > no;
+        // Sum all votes for quorum check
+        uint256 totalVotes = 0;
+        for (uint256 i = 0; i < counts.length;) {
+            totalVotes += counts[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        // Check quorum: totalVotes * RATIO_BASE >= minParticipation * totalSupply
+        uint256 _totalVotingPower = totalVotingPower(proposal.parameters.snapshotBlock);
+        if (_totalVotingPower == 0) {
+            return false;
+        }
+
+        bool quorumReached = totalVotes * RATIO_BASE >= uint256(votingSettings.minParticipation) * _totalVotingPower;
+        if (!quorumReached) {
+            return false;
+        }
+
+        // For 2-3 options: yes (index 0) must strictly beat no (index 1)
+        if (proposal.parameters.numOptions <= 3) {
+            return counts[0] > counts[1];
+        }
+
+        // For 4+ options: quorum is sufficient
+        return true;
     }
 
     /// @notice Checks if proposal exists or not.
