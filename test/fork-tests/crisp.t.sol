@@ -16,9 +16,9 @@ contract MyPluginTestFork is TestBase {
     CrispVoting plugin;
 
     /// @notice these are the addresses when deploying on a local hardhat network
-    address crispProgramAddress = 0x67d269191c92Caf3cD7723F116c85e6E9bf55933;
-    address enclaveAddress = 0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0;
-    address enclaveFeeToken = 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0;
+    address crispProgramAddress = 0x75b0f71D6fD5E6BB426f223534fA12e38854f69E;
+    address enclaveAddress = 0xB8dbC3149719e018D23ad5F49Ab73228Ef521991;
+    address enclaveFeeToken = 0xBcAAFcAD5eF365B05eEB24d49eCf7A1c597195e1;
 
     bytes crispProgramParams =
         "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000fc00100000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000003fffffff000001";
@@ -55,7 +55,7 @@ contract MyPluginTestFork is TestBase {
             new Action[](0),
             uint64(block.timestamp),
             uint64(block.timestamp + 100),
-            abi.encode(uint256(0), [uint256(block.timestamp), uint256(block.timestamp + 500)])
+            abi.encode(uint256(0), [uint256(block.timestamp), uint256(block.timestamp + 500)], 2, 0, 0)
         );
 
         vm.stopPrank();
