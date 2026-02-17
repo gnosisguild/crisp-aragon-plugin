@@ -130,13 +130,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
         {
             /// @notice Decode the data
-            (
-                uint256 _allowFailureMap,
-                uint256[2] memory _startWindow,
-                uint256 numOptions,
-                uint256 creditMode,
-                uint256 credits
-            ) = abi.decode(_data, (uint256, uint256[2], uint256, uint256, uint256));
+            (uint256 _allowFailureMap, uint256 numOptions, uint256 creditMode, uint256 credits) =
+                abi.decode(_data, (uint256, uint256, uint256, uint256));
 
             if (numOptions < 2) {
                 revert InvalidOptionCount(numOptions);
@@ -152,8 +147,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
             IEnclave.E3RequestParams memory requestParams = IEnclave.E3RequestParams({
                 threshold: threshold,
-                startWindow: _startWindow,
-                duration: _endDate - _startDate,
+                inputWindow: [uint256(_startDate), uint256(_endDate)],
                 e3Program: IE3Program(crispProgramAddress),
                 e3ProgramParams: crispProgramParams,
                 computeProviderParams: computeProviderParams,
