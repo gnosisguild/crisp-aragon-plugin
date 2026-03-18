@@ -10,6 +10,7 @@ import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {DaoUnauthorized} from "@aragon/osx-commons-contracts/src/permission/auth/auth.sol";
 import {CrispVoting} from "../../src/CrispVoting.sol";
 import {IERC20Mint} from "../../src/IERC20Mint.sol";
+import {IEnclave} from "../../src/IEnclave.sol";
 
 contract MyPluginTestFork is TestBase {
     DAO dao;
@@ -29,7 +30,7 @@ contract MyPluginTestFork is TestBase {
         dao: dao,
         token: address(0),
         enclave: enclaveAddress,
-        threshold: [uint32(2), uint32(3)],
+        committeeSize: IEnclave.CommitteeSize(0),
         crispProgramAddress: crispProgramAddress,
         crispProgramParams: crispProgramParams,
         computeProviderParams: computeProviderParams

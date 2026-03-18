@@ -8,6 +8,7 @@ import {IPlugin} from "@aragon/osx-commons-contracts/src/plugin/IPlugin.sol";
 import {GovernanceERC20} from "@aragon/token-voting-plugin/erc20/GovernanceERC20.sol";
 
 import {ICrispVoting} from "../src/ICrispVoting.sol";
+import {IEnclave} from "../src/IEnclave.sol";
 import {CrispVotingSetup} from "../src/setup/CrispVotingSetup.sol";
 
 library Utils {
@@ -19,7 +20,7 @@ library Utils {
         address crispProgramAddress;
         ICrispVoting.VotingSettings votingSettings;
         IPlugin.TargetConfig targetConfig;
-        uint32[2] threshold;
+        IEnclave.CommitteeSize committeeSize;
         bytes crispProgramParams;
         bytes computeProviderParams;
     }
@@ -36,8 +37,7 @@ library Utils {
             minParticipation: uint32(VM.envUint("MINIMUM_PARTICIPATION"))
         });
         crispEnvVariables.targetConfig = defaultTargetConfig;
-        crispEnvVariables.threshold[0] = uint32(VM.envUint("THRESHOLD_0"));
-        crispEnvVariables.threshold[1] = uint32(VM.envUint("THRESHOLD_1"));
+        crispEnvVariables.committeeSize = IEnclave.CommitteeSize(uint8(VM.envUint("COMMITTEE_SIZE")));
         crispEnvVariables.crispProgramParams = VM.envBytes("CRISP_PROGRAM_PARAMS");
         crispEnvVariables.computeProviderParams = VM.envBytes("COMPUTE_PROVIDER_PARAMS");
     }

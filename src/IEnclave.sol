@@ -17,13 +17,19 @@ interface IEnclave {
     //                                                        //
     ////////////////////////////////////////////////////////////
 
+    /// @notice Sizes of committees for E3 computations
+    enum CommitteeSize {
+        Micro,
+        Small,
+        Medium,
+        Large
+    }
+
     /// @notice Lifecycle stages of an E3 computation
     enum E3Stage {
         None,
         Requested,
         CommitteeFinalized,
-        // Once a key is published, it is possible to then accept inputs
-        // as long as we are within the input deadline (start and end)
         KeyPublished,
         CiphertextReady,
         Complete,
@@ -31,6 +37,7 @@ interface IEnclave {
     }
 
     /// @notice Reasons why an E3 failed
+    /// @dev Any new failure reason should be added before _MAX_FAILURE_REASON.
     enum FailureReason {
         None,
         CommitteeFormationTimeout,
@@ -44,7 +51,8 @@ interface IEnclave {
         RequesterCancelled,
         DecryptionTimeout,
         DecryptionInvalidShares,
-        VerificationFailed
+        VerificationFailed,
+        _MAX_FAILURE_REASON
     }
 
     ////////////////////////////////////////////////////////////
@@ -58,7 +66,6 @@ interface IEnclave {
         uint256 dkgWindow;
         uint256 computeWindow;
         uint256 decryptionWindow;
-        uint256 gracePeriod;
     }
 
     /// @notice Deadlines for each E3
@@ -140,9 +147,22 @@ interface IEnclave {
     /// @param e3ProgramParams Array of encoded encryption scheme parameters (e.g, for BFV)
     event AllowedE3ProgramsParamsSet(bytes[] e3ProgramParams);
 
+    /// @notice Emitted when E3 program parameter sets are removed.
+    /// @param e3ProgramParams Array of removed encryption scheme parameters.
+    event E3ProgramsParamsRemoved(bytes[] e3ProgramParams);
+
     /// @notice Emitted when E3RefundManager contract is set.
     /// @param e3RefundManager The address of the E3RefundManager contract.
     event E3RefundManagerSet(address indexed e3RefundManager);
+
+    /// @notice Emitted when the SlashingManager contract is set.
+    /// @param slashingManager The address of the SlashingManager contract.
+    event SlashingManagerSet(address indexed slashingManager);
+
+    /// @notice Emitted when slashed funds are escrowed for an E3
+    /// @param e3Id The E3 ID.
+    /// @param amount The amount of slashed funds escrowed.
+    event SlashedFundsEscrowed(uint256 indexed e3Id, uint256 amount);
 
     /// @notice Emitted when a failed E3 is processed for refunds.
     /// @param e3Id The ID of the failed E3.
@@ -167,6 +187,11 @@ interface IEnclave {
     /// @notice Emitted when timeout config is updated
     event TimeoutConfigUpdated(E3TimeoutConfig config);
 
+    /// @notice Emitted when committee thresholds are updated
+    /// @param size The committee size enum value.
+    /// @param threshold The M/N threshold values.
+    event CommitteeThresholdsUpdated(CommitteeSize indexed size, uint32[2] threshold);
+
     ////////////////////////////////////////////////////////////
     //                                                        //
     //                  Structs                               //
@@ -174,14 +199,14 @@ interface IEnclave {
     ////////////////////////////////////////////////////////////
 
     /// @notice This struct contains the parameters to submit a request to Enclave.
-    /// @param threshold The M/N threshold for the committee.
+    /// @param committeeSize The M/N threshold and honest parties for the committee.
     /// @param inputWindow When the program will start and stop accepting inputs.
     /// @param e3Program The address of the E3 Program.
     /// @param e3ProgramParams The ABI encoded computation parameters.
     /// @param computeProviderParams The ABI encoded compute provider parameters.
     /// @param customParams Arbitrary ABI-encoded application-defined parameters.
     struct E3RequestParams {
-        uint32[2] threshold;
+        CommitteeSize committeeSize;
         uint256[2] inputWindow;
         IE3Program e3Program;
         bytes e3ProgramParams;
@@ -271,6 +296,11 @@ interface IEnclave {
     /// @param _e3ProgramsParams Array of ABI encoded parameter sets to allow.
     function setE3ProgramsParams(bytes[] memory _e3ProgramsParams) external;
 
+    /// @notice Removes previously allowed E3 program parameter sets.
+    /// @dev This function revokes specific parameter sets that should no longer be allowed.
+    /// @param _e3ProgramsParams Array of ABI encoded parameter sets to remove.
+    function removeE3ProgramsParams(bytes[] memory _e3ProgramsParams) external;
+
     ////////////////////////////////////////////////////////////
     //                                                        //
     //                   Get Functions                        //
@@ -317,6 +347,12 @@ interface IEnclave {
     /// @param reason The failure reason from FailureReason enum.
     function onE3Failed(uint256 e3Id, uint8 reason) external;
 
+    /// @notice Escrow slashed funds for deferred distribution
+    /// @dev Called by SlashingManager. Proxies to E3RefundManager.
+    /// @param e3Id The E3 ID.
+    /// @param amount Amount of slashed funds to escrow.
+    function escrowSlashedFunds(uint256 e3Id, uint256 amount) external;
+
     ////////////////////////////////////////////////////////////
     //                                                        //
     //                  Lifecycle Functions                   //
@@ -327,6 +363,11 @@ interface IEnclave {
     /// @param e3Id The E3 ID
     /// @return reason The failure reason
     function markE3Failed(uint256 e3Id) external returns (FailureReason reason);
+
+    /// @notice Process a failed E3: transfer payment to E3RefundManager and calculate refunds.
+    /// @dev Permissionless. Requires E3 to be in Failed stage.
+    /// @param e3Id The E3 ID
+    function processE3Failure(uint256 e3Id) external;
 
     /// @notice Check if E3 can be marked as failed
     /// @param e3Id The E3 ID
@@ -361,4 +402,9 @@ interface IEnclave {
     /// @notice Set timeout configuration
     /// @param config The new timeout config
     function setTimeoutConfig(E3TimeoutConfig calldata config) external;
+
+    /// @notice Set the threshold values for a committee size
+    /// @param size The committee size enum value
+    /// @param threshold The M/N threshold values [quorum, total]
+    function setCommitteeThresholds(CommitteeSize size, uint32[2] calldata threshold) external;
 }

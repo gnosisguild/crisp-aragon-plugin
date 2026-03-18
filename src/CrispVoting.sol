@@ -58,7 +58,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     mapping(uint256 => Proposal) internal proposals;
 
     /// @notice The ciphernode threshold
-    uint32[2] private threshold;
+    IEnclave.CommitteeSize private committeeSize;
     /// @notice The address of the E3 Program
     address private crispProgramAddress;
     /// @notice The ABI encoded program parameters
@@ -84,7 +84,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         enclave = IEnclave(_params.enclave);
         votingToken = IVotesUpgradeable(_params.token);
         enclaveFeeToken = IERC20(enclave.feeToken());
-        threshold = _params.threshold;
+        committeeSize = _params.committeeSize;
         crispProgramAddress = _params.crispProgramAddress;
         crispProgramParams = _params.crispProgramParams;
         computeProviderParams = _params.computeProviderParams;
@@ -146,7 +146,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             );
 
             IEnclave.E3RequestParams memory requestParams = IEnclave.E3RequestParams({
-                threshold: threshold,
+                committeeSize: committeeSize,
                 inputWindow: [uint256(_startDate), uint256(_endDate)],
                 e3Program: IE3Program(crispProgramAddress),
                 e3ProgramParams: crispProgramParams,

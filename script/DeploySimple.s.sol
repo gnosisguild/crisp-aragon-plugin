@@ -123,7 +123,7 @@ contract CrispVotingScript is Script {
             dao: IDAO(address(0)),
             token: address(0),
             enclave: crispEnvVariables.enclave,
-            threshold: crispEnvVariables.threshold,
+            committeeSize: crispEnvVariables.committeeSize,
             crispProgramAddress: crispEnvVariables.crispProgramAddress,
             crispProgramParams: crispEnvVariables.crispProgramParams,
             computeProviderParams: crispEnvVariables.computeProviderParams
