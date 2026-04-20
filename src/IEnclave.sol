@@ -202,16 +202,22 @@ interface IEnclave {
     /// @param committeeSize The M/N threshold and honest parties for the committee.
     /// @param inputWindow When the program will start and stop accepting inputs.
     /// @param e3Program The address of the E3 Program.
-    /// @param e3ProgramParams The ABI encoded computation parameters.
+    /// @param paramSet The BFV encryption parameter set to use.
     /// @param computeProviderParams The ABI encoded compute provider parameters.
     /// @param customParams Arbitrary ABI-encoded application-defined parameters.
     struct E3RequestParams {
         CommitteeSize committeeSize;
         uint256[2] inputWindow;
         IE3Program e3Program;
-        bytes e3ProgramParams;
+        uint8 paramSet;
         bytes computeProviderParams;
         bytes customParams;
+        /// @notice When true, ciphernodes generate and fold wrapper proofs
+        ///         for DKG proof aggregation (public verifiability). When
+        ///         false, wrapper/fold proofs are skipped to reduce latency.
+        ///         C5 and C7 proofs are always generated and verified on-chain
+        ///         regardless of this flag.
+        bool proofAggregationEnabled;
     }
 
     ////////////////////////////////////////////////////////////
@@ -242,10 +248,14 @@ interface IEnclave {
     /// @dev This function MUST emit the PlaintextOutputPublished event.
     /// @param e3Id ID of the E3.
     /// @param plaintextOutput ABI encoded plaintext output.
-    /// @param proof ABI encoded data to verify the plaintextOutput.
-    function publishPlaintextOutput(uint256 e3Id, bytes calldata plaintextOutput, bytes calldata proof)
-        external
-        returns (bool success);
+    /// @param proof ABI encoded data to verify the plaintextOutput (C7).
+    /// @param foldProof Optional fold proof ABI-encoded (bytes, bytes32[]); empty to skip.
+    function publishPlaintextOutput(
+        uint256 e3Id,
+        bytes calldata plaintextOutput,
+        bytes calldata proof,
+        bytes calldata foldProof
+    ) external returns (bool success);
 
     ////////////////////////////////////////////////////////////
     //                                                        //

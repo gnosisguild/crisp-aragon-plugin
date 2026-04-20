@@ -6,6 +6,7 @@
 pragma solidity >=0.8.27;
 
 import {IEnclave} from "./IEnclave.sol";
+import {IPkVerifier} from "./IPkVerifier.sol";
 
 /**
  * @title IE3Program
@@ -66,7 +67,7 @@ interface IDecryptionVerifier {
  * @param inputWindow When to start and stop accepting inputs from data providers
  * @param encryptionSchemeId Identifier for the encryption scheme used in this computation
  * @param e3Program Address of the E3 Program contract that validates and verifies the computation
- * @param e3ProgramParams ABI encoded computation parameters specific to the E3 program
+ * @param paramSet BFV encryption parameter set used for this computation
  * @param customParams Arbitrary ABI-encoded application-defined parameters.
  * @param decryptionVerifier Address of the output verifier contract for decryption verification
  * @param committeePublicKey Hash of the public key of the selected committee for this computation
@@ -81,11 +82,13 @@ struct E3 {
     uint256[2] inputWindow;
     bytes32 encryptionSchemeId;
     IE3Program e3Program;
-    bytes e3ProgramParams;
+    uint8 paramSet;
     bytes customParams;
     IDecryptionVerifier decryptionVerifier;
+    IPkVerifier pkVerifier;
     bytes32 committeePublicKey;
     bytes32 ciphertextOutput;
     bytes plaintextOutput;
     address requester;
+    bool proofAggregationEnabled;
 }
