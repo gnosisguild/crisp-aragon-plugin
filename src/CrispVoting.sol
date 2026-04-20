@@ -149,9 +149,10 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
                 committeeSize: committeeSize,
                 inputWindow: [uint256(_startDate), uint256(_endDate)],
                 e3Program: IE3Program(crispProgramAddress),
-                e3ProgramParams: crispProgramParams,
                 computeProviderParams: computeProviderParams,
-                customParams: customParams
+                customParams: customParams,
+                proofAggregationEnabled: false,
+                paramSet: 0
             });
 
             // calculate the E3 fee
