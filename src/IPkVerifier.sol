@@ -16,8 +16,5 @@ interface IPkVerifier {
     /// @param foldProof ABI-encoded fold proof (bytes, bytes32[]) or empty to skip.
     /// @return pkCommitment The aggregate public key commitment (last public input).
     /// @dev Reverts if the proof is invalid.
-    function verify(
-        bytes memory proof,
-        bytes memory foldProof
-    ) external view returns (bytes32 pkCommitment);
+    function verify(bytes memory proof, bytes memory foldProof) external view returns (bytes32 pkCommitment);
 }

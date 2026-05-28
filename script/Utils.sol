@@ -21,7 +21,7 @@ library Utils {
         ICrispVoting.VotingSettings votingSettings;
         IPlugin.TargetConfig targetConfig;
         IEnclave.CommitteeSize committeeSize;
-        bytes crispProgramParams;
+        uint8 paramSet;
         bytes computeProviderParams;
     }
 
@@ -38,8 +38,8 @@ library Utils {
         });
         crispEnvVariables.targetConfig = defaultTargetConfig;
         crispEnvVariables.committeeSize = IEnclave.CommitteeSize(uint8(VM.envUint("COMMITTEE_SIZE")));
-        crispEnvVariables.crispProgramParams = VM.envBytes("CRISP_PROGRAM_PARAMS");
         crispEnvVariables.computeProviderParams = VM.envBytes("COMPUTE_PROVIDER_PARAMS");
+        crispEnvVariables.paramSet = uint8(VM.envUint("PARAM_SET"));
     }
 
     function getGovernanceTokenAndMintSettings()
