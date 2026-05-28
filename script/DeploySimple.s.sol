@@ -124,8 +124,8 @@ contract CrispVotingScript is Script {
             token: address(0),
             enclave: crispEnvVariables.enclave,
             committeeSize: crispEnvVariables.committeeSize,
+            paramSet: crispEnvVariables.paramSet,
             crispProgramAddress: crispEnvVariables.crispProgramAddress,
-            crispProgramParams: crispEnvVariables.crispProgramParams,
             computeProviderParams: crispEnvVariables.computeProviderParams
         });
     }

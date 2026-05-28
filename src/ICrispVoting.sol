@@ -73,6 +73,7 @@ interface ICrispVoting {
     /// @param token The token contract address
     /// @param enclave The enclave contract address
     /// @param committeeSize The size of the committee.
+    /// @param paramSet The parameter set to use.
     /// @param e3Program The address of the E3 Program.
     /// @param e3ProgramParams The ABI encoded computation parameters.
     struct PluginInitParams {
@@ -80,8 +81,8 @@ interface ICrispVoting {
         address token;
         address enclave;
         IEnclave.CommitteeSize committeeSize;
+        uint8 paramSet;
         address crispProgramAddress;
-        bytes crispProgramParams;
         bytes computeProviderParams;
     }
 

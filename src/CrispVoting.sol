@@ -59,10 +59,10 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
     /// @notice The ciphernode threshold
     IEnclave.CommitteeSize private committeeSize;
+    /// @notice The parameter set to use 
+    uint8 private paramSet;
     /// @notice The address of the E3 Program
     address private crispProgramAddress;
-    /// @notice The ABI encoded program parameters
-    bytes private crispProgramParams;
     /// @notice The ABI encoded compute provider parameters
     bytes private computeProviderParams;
 
@@ -85,8 +85,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         votingToken = IVotesUpgradeable(_params.token);
         enclaveFeeToken = IERC20(enclave.feeToken());
         committeeSize = _params.committeeSize;
+        paramSet = _params.paramSet;
         crispProgramAddress = _params.crispProgramAddress;
-        crispProgramParams = _params.crispProgramParams;
         computeProviderParams = _params.computeProviderParams;
     }
 
@@ -152,7 +152,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
                 computeProviderParams: computeProviderParams,
                 customParams: customParams,
                 proofAggregationEnabled: false,
-                paramSet: 0
+                paramSet: paramSet
             });
 
             // calculate the E3 fee
