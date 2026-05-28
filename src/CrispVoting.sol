@@ -59,7 +59,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
     /// @notice The ciphernode threshold
     IEnclave.CommitteeSize private committeeSize;
-    /// @notice The parameter set to use 
+    /// @notice The parameter set to use
     uint8 private paramSet;
     /// @notice The address of the E3 Program
     address private crispProgramAddress;
