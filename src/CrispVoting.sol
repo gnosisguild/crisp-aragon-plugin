@@ -211,6 +211,11 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
         Proposal storage proposal = proposals[_proposalId];
 
+        // proposals with more than 3 options are signaling-only and cannot be executed
+        if (proposal.parameters.numOptions > 3) {
+            revert ProposalNotExecutable(_proposalId);
+        }
+
         // the voting window must have closed before a proposal can be executed
         if (block.timestamp < proposal.parameters.endDate) {
             revert ProposalExecutionForbidden(_proposalId);
@@ -437,6 +442,11 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             return false;
         }
 
+        // proposals with more than 3 options are signaling-only and never executable
+        if (proposal.parameters.numOptions > 3) {
+            return false;
+        }
+
         // Sum all votes for quorum check
         uint256 totalVotes = 0;
         for (uint256 i = 0; i < counts.length;) {
@@ -458,12 +468,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
 
         // For 2-3 options: yes (index 0) must strictly beat no (index 1)
-        if (proposal.parameters.numOptions <= 3) {
-            return counts[0] > counts[1];
-        }
-
-        // For 4+ options: quorum is sufficient
-        return true;
+        return counts[0] > counts[1];
     }
 
     /// @notice Checks if proposal exists or not.

@@ -26,6 +26,10 @@ interface ICrispVoting {
     /// @notice Thrown when the number of options is less than 2.
     /// @param numOptions The number of options provided.
     error InvalidOptionCount(uint256 numOptions);
+    /// @notice Thrown when attempting to execute a proposal that is signaling-only (more than 3
+    /// options) and therefore has no binding execution semantics.
+    /// @param proposalId The ID of the proposal.
+    error ProposalNotExecutable(uint256 proposalId);
     /// @notice Thrown when a proposal date is outside the allowed bounds.
     /// @param limit The bound limit (earliest allowed start or end date).
     /// @param actual The provided date.
