@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.29;
 
 import {IDAO, DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
@@ -157,7 +157,7 @@ contract CrispVotingSetup is PluginSetup {
         returns (PermissionLib.MultiTargetPermission[] memory permissions)
     {
         // Request reverting the granted permissions
-        permissions = new PermissionLib.MultiTargetPermission[](2);
+        permissions = new PermissionLib.MultiTargetPermission[](1);
 
         // the plugin has the Execute permission on the DAO. This needs to be revoked.
         permissions[0] = PermissionLib.MultiTargetPermission({

@@ -19,7 +19,6 @@ contract SimpleBuilder is TestBase {
     // Parameters to override
     address daoOwner; // Used for testing purposes only
     address[] managers; // daoOwner will be used if eventually empty
-    uint256 initialNumber = 1;
 
     GovernanceERC20 governanceERC20Base;
 
@@ -71,7 +70,10 @@ contract SimpleBuilder is TestBase {
             committeeSize: committeeSize,
             crispProgramAddress: crispProgramAddress,
             paramSet: 0,
-            computeProviderParams: computeProviderParams
+            computeProviderParams: computeProviderParams,
+            votingSettings: ICrispVoting.VotingSettings({
+                minProposerVotingPower: 0, minParticipation: 0, minDuration: 0
+            })
         });
 
         // Plugin
