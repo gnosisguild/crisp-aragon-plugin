@@ -30,7 +30,8 @@ contract MyPluginTest is TestBase {
         committeeSize: IEnclave.CommitteeSize(0),
         crispProgramAddress: crispProgramAddress,
         paramSet: 0,
-        computeProviderParams: computeProviderParams
+        computeProviderParams: computeProviderParams,
+        votingSettings: ICrispVoting.VotingSettings({minProposerVotingPower: 0, minParticipation: 0, minDuration: 0})
     });
 
     function setUp() public {

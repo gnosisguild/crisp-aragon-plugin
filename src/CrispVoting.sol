@@ -9,7 +9,6 @@ import {
 } from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/ProposalUpgradeable.sol";
 import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import {IProposal} from "@aragon/osx-commons-contracts/src/plugin/extensions/proposal/IProposal.sol";
-import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -18,14 +17,14 @@ import {E3, IE3Program} from "./IE3.sol";
 import {ICrispVoting} from "./ICrispVoting.sol";
 import {ICRISP} from "./ICRISP.sol";
 
-/// @title My Upgradeable Plugin
-/// @notice A plugin that exposes a permissioned function to store a number and a function that makes the DAO execute an action.
-/// @dev In order to call setNumber() the caller needs to hold the MANAGER_PERMISSION
-/// @dev In order for resetDaoMetadata() to work, the plugin needs to hold EXECUTE_PERMISSION_ID on the DAO
+/// @title CrispVoting
+/// @notice An Aragon OSx governance plugin that runs private, encrypted votes through Enclave's
+/// CRISP E3 program. Proposal creation registers an E3 request with Enclave; once the tally is
+/// decrypted and published by the CRISP program, the proposal can be executed if it meets the
+/// quorum and winning-option criteria.
+/// @dev In order for executed actions to run, the plugin needs to hold EXECUTE_PERMISSION_ID on the DAO.
 /// @notice This plugin is inspired by MACI's voting plugin - https://github.com/privacy-ethereum/maci-voting-plugin-aragon/blob/main/src/MaciVoting.sol
 contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting {
-    /// @notice used to cast uint256 to uint64 safely
-    using SafeCastUpgradeable for uint256;
     /// @notice used to perform safe ERC20 operations
     using SafeERC20 for IERC20;
 
@@ -88,6 +87,13 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         paramSet = _params.paramSet;
         crispProgramAddress = _params.crispProgramAddress;
         computeProviderParams = _params.computeProviderParams;
+
+        _updateVotingSettings(_params.votingSettings);
+    }
+
+    /// @inheritdoc ICrispVoting
+    function updateVotingSettings(VotingSettings calldata _votingSettings) external auth(MANAGER_PERMISSION_ID) {
+        _updateVotingSettings(_votingSettings);
     }
 
     /// @notice Creates a new E3 request in Enclave
@@ -128,6 +134,10 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             }
         }
 
+        /// @notice Validate and normalise the dates, enforcing the configured minimum duration.
+        /// The validated values feed both the Enclave input window and the stored parameters.
+        (_startDate, _endDate) = _validateProposalDates(_startDate, _endDate);
+
         {
             /// @notice Decode the data
             (uint256 _allowFailureMap, uint256 numOptions, uint256 creditMode, uint256 credits) =
@@ -160,7 +170,7 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             // take it from the caller
             enclaveFeeToken.safeTransferFrom(_msgSender(), address(this), fee);
             // approve the enclave contract to take the fee
-            enclaveFeeToken.approve(address(enclave), fee);
+            enclaveFeeToken.forceApprove(address(enclave), fee);
 
             // send the request to Enclave
             (uint256 e3Id,) = enclave.request(requestParams);
@@ -171,7 +181,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
                 numOptions: numOptions,
                 startDate: _startDate,
                 endDate: _endDate,
-                snapshotBlock: block.number,
+                // snapshot the previous block so voting power is read from a finalized block
+                snapshotBlock: block.number - 1,
                 minVotingPower: votingSettings.minProposerVotingPower,
                 minParticipation: votingSettings.minParticipation
             });
@@ -194,15 +205,26 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
     /// @inheritdoc IProposal
     function execute(uint256 _proposalId) external {
+        if (!_proposalExists(_proposalId)) {
+            revert NonexistentProposal(_proposalId);
+        }
+
         Proposal storage proposal = proposals[_proposalId];
 
-        uint256[] memory tallyCounts = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
-        proposal.tally.counts = tallyCounts;
-
-        // check if we can execute it3
-        if (!_canExecute(_proposalId)) {
+        // the voting window must have closed before a proposal can be executed
+        if (block.timestamp < proposal.parameters.endDate) {
             revert ProposalExecutionForbidden(_proposalId);
         }
+
+        uint256[] memory tallyCounts = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
+
+        // check if we can execute it using the freshly decoded tally
+        if (!_canExecute(_proposalId, tallyCounts)) {
+            revert ProposalExecutionForbidden(_proposalId);
+        }
+
+        /// @notice store the final tally
+        proposal.tally.counts = tallyCounts;
 
         /// @notice we set the proposal as executed so it cannot be executed again
         proposal.executed = true;
@@ -220,10 +242,21 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
     }
 
     /// @notice Returns whether the proposal has succeeded or not.
+    /// @dev A proposal has succeeded if it has already been executed or if it currently meets the
+    /// execution criteria (quorum and the winning-option rules). This is independent of whether the
+    /// proposal has actually been executed.
     /// @param _proposalId The id of the proposal.
     /// @return Whether the proposal has succeeded or not.
     function hasSucceeded(uint256 _proposalId) external view returns (bool) {
-        return proposals[_proposalId].executed;
+        if (!_proposalExists(_proposalId)) {
+            revert NonexistentProposal(_proposalId);
+        }
+
+        if (proposals[_proposalId].executed) {
+            return true;
+        }
+
+        return _canExecute(_proposalId);
     }
 
     /// @notice Returns the proposal data for a given proposal ID.
@@ -280,9 +313,10 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         return _canExecute(_proposalId);
     }
 
-    /// @notice Get the custom proposal parameters ABI
+    /// @notice Get the custom proposal parameters ABI.
+    /// @dev Mirrors the `_data` payload decoded in `createProposal`.
     function customProposalParamsABI() external pure returns (string memory) {
-        return "(uint256 allowFailureMap, uint8 voteOption, bool tryEarlyExecution)";
+        return "(uint256 allowFailureMap, uint256 numOptions, uint256 creditMode, uint256 credits)";
     }
 
     /// @notice Get the tally result
@@ -326,7 +360,22 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         return winnerIndex;
     }
 
-    /// @notice Validates and returns the proposal vote dates.
+    /// @notice Validates and stores the voting settings.
+    /// @dev `minParticipation` is a ratio expressed against `RATIO_BASE`, so it cannot exceed it.
+    /// @param _votingSettings The voting settings to store.
+    function _updateVotingSettings(VotingSettings memory _votingSettings) internal {
+        if (_votingSettings.minParticipation > RATIO_BASE) {
+            revert RatioOutOfBounds({limit: RATIO_BASE, actual: _votingSettings.minParticipation});
+        }
+
+        votingSettings = _votingSettings;
+
+        emit VotingSettingsUpdated(
+            _votingSettings.minProposerVotingPower, _votingSettings.minParticipation, _votingSettings.minDuration
+        );
+    }
+
+    /// @notice Validates and returns the proposal vote dates, enforcing the minimum duration.
     /// @param _start The start date of the proposal vote. If 0, the current timestamp is used
     /// and the vote starts immediately.
     /// @param _end The end date of the proposal vote. If 0, `_start + minDuration` is used.
@@ -337,21 +386,22 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         view
         returns (uint64 startDate, uint64 endDate)
     {
-        uint64 currentTimestamp = block.timestamp.toUint64();
+        // block.timestamp cannot exceed uint64 for ~580 billion years, so the cast is safe.
+        uint64 currentTimestamp = uint64(block.timestamp);
 
         if (_start == 0) {
             startDate = currentTimestamp;
         } else {
             startDate = _start;
 
+            // the vote cannot start in the past, otherwise the minimum duration is meaningless
             if (startDate < currentTimestamp) {
                 revert DateOutOfBounds({limit: currentTimestamp, actual: startDate});
             }
         }
 
-        // Since `minDuration` is limited to 1 year, `startDate + minDuration` can only overflow if
-        // the `startDate` is after `type(uint64).max - minDuration`. In this case, the proposal
-        // creation will revert and another date can be picked.
+        // checked arithmetic: an absurdly large `minDuration` simply reverts here, and the caller
+        // can pick another date. Bounding `minDuration` on update would tighten this further.
         uint64 earliestEndDate = startDate + votingSettings.minDuration;
 
         if (_end == 0) {
@@ -365,18 +415,27 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
         }
     }
 
-    /// @notice Internal checks to determine whether a proposal can be executed or not
+    /// @notice Internal checks to determine whether a proposal can be executed or not.
+    /// @dev Fetches the tally from the CRISP program before delegating to the counts-based check.
     /// @param _proposalId The ID of the proposal to be checked
     /// @return Returns `true` if the proposal can be executed, otherwise false
     function _canExecute(uint256 _proposalId) internal view returns (bool) {
+        uint256[] memory counts = ICRISP(crispProgramAddress).decodeTally(proposals[_proposalId].e3Id);
+        return _canExecute(_proposalId, counts);
+    }
+
+    /// @notice Internal checks to determine whether a proposal can be executed or not, given an
+    /// already-decoded tally. Avoids a redundant `decodeTally` call on the execution path.
+    /// @param _proposalId The ID of the proposal to be checked
+    /// @param counts The decoded tally counts for the proposal
+    /// @return Returns `true` if the proposal can be executed, otherwise false
+    function _canExecute(uint256 _proposalId, uint256[] memory counts) internal view returns (bool) {
         Proposal memory proposal = proposals[_proposalId];
 
         // can't execute twice
         if (proposal.executed) {
             return false;
         }
-
-        uint256[] memory counts = ICRISP(crispProgramAddress).decodeTally(proposal.e3Id);
 
         // Sum all votes for quorum check
         uint256 totalVotes = 0;

@@ -23,15 +23,23 @@ interface ICrispVoting {
     /// @notice Thrown when a proposal doesn't exist.
     /// @param proposalId The ID of the proposal which doesn't exist.
     error NonexistentProposal(uint256 proposalId);
-    /// @notice Thrown when the caller doesn't have enough voting power.
-    error NoVotingPower();
-    /// @notice Thrown when the proposal is not in the voting period.
-    /// @param limit The bound limit (start or end date).
-    /// @param actual The actual time.
-    error DateOutOfBounds(uint64 limit, uint64 actual);
     /// @notice Thrown when the number of options is less than 2.
     /// @param numOptions The number of options provided.
     error InvalidOptionCount(uint256 numOptions);
+    /// @notice Thrown when a proposal date is outside the allowed bounds.
+    /// @param limit The bound limit (earliest allowed start or end date).
+    /// @param actual The provided date.
+    error DateOutOfBounds(uint64 limit, uint64 actual);
+    /// @notice Thrown when a ratio value (e.g. `minParticipation`) exceeds the ratio base.
+    /// @param limit The maximum allowed value.
+    /// @param actual The provided value.
+    error RatioOutOfBounds(uint256 limit, uint256 actual);
+
+    /// @notice Emitted when the voting settings are updated.
+    /// @param minProposerVotingPower The minimum voting power needed to create a proposal.
+    /// @param minParticipation The minimum participation required for quorum.
+    /// @param minDuration The minimum duration of a vote.
+    event VotingSettingsUpdated(uint256 minProposerVotingPower, uint32 minParticipation, uint64 minDuration);
 
     /// @notice A struct for the voting settings.
     /// @param minProposerVotingPower The minimum voting power needed to propose a vote.
@@ -76,6 +84,7 @@ interface ICrispVoting {
     /// @param paramSet The parameter set to use.
     /// @param e3Program The address of the E3 Program.
     /// @param e3ProgramParams The ABI encoded computation parameters.
+    /// @param votingSettings The initial voting settings (quorum, proposer power, duration).
     struct PluginInitParams {
         IDAO dao;
         address token;
@@ -84,6 +93,7 @@ interface ICrispVoting {
         uint8 paramSet;
         address crispProgramAddress;
         bytes computeProviderParams;
+        VotingSettings votingSettings;
     }
 
     /// @notice A struct for proposal-related information.
@@ -129,6 +139,10 @@ interface ICrispVoting {
     /// @return The minimum duration of the vote.
     function minDuration() external view returns (uint64);
 
+    /// @notice Updates the voting settings. Requires the `MANAGER_PERMISSION`.
+    /// @param _votingSettings The new voting settings.
+    function updateVotingSettings(VotingSettings calldata _votingSettings) external;
+
     /// @notice Returns the proposal data for a given proposal ID.
     /// @param _proposalId The id of the proposal.
     /// @return The proposal data.
@@ -140,6 +154,8 @@ interface ICrispVoting {
     function getTally(uint256 _proposalId) external view returns (TallyResults memory);
 
     /// @notice Returns the index of the option with the most votes.
+    /// @dev On a tie, or when no votes have been cast, the lowest index (0) is returned. Callers
+    /// should not treat a return value of 0 as a definitive winner without inspecting the tally.
     /// @param _proposalId The id of the proposal.
     /// @return The winning option index.
     function getWinningOption(uint256 _proposalId) external view returns (uint256);
