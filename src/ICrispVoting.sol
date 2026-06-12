@@ -6,6 +6,7 @@ import {Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol"
 import {IPlugin} from "@aragon/osx-commons-contracts/src/plugin/IPlugin.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {IEnclave} from "./IEnclave.sol";
+import {ICRISP} from "./ICRISP.sol";
 
 /// @notice Interface for the Crisp Voting plugin
 interface ICrispVoting {
@@ -26,8 +27,9 @@ interface ICrispVoting {
     /// @notice Thrown when the number of options is less than 2.
     /// @param numOptions The number of options provided.
     error InvalidOptionCount(uint256 numOptions);
-    /// @notice Thrown when attempting to execute a proposal that is signaling-only (more than 3
-    /// options) and therefore has no binding execution semantics.
+    /// @notice Thrown when attempting to execute a signaling-only proposal. A proposal is
+    /// signaling-only (poll) if it has more than 3 options or uses CONSTANT credits, and therefore
+    /// has no binding execution semantics.
     /// @param proposalId The ID of the proposal.
     error ProposalNotExecutable(uint256 proposalId);
     /// @notice Thrown when a proposal date is outside the allowed bounds.
@@ -71,6 +73,7 @@ interface ICrispVoting {
     /// @param snapshotBlock The number of the block prior to the proposal creation.
     /// @param minVotingPower The minimum voting power needed.
     /// @param minParticipation The minimum participation needed.
+    /// @param creditMode The credit mode for the vote. CONSTANT proposals are signaling-only.
     struct ProposalParameters {
         uint256 numOptions;
         uint64 startDate;
@@ -78,6 +81,7 @@ interface ICrispVoting {
         uint256 snapshotBlock;
         uint256 minVotingPower;
         uint256 minParticipation;
+        ICRISP.CreditMode creditMode;
     }
 
     /// @notice The parameters for initializing the plugin

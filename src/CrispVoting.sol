@@ -184,7 +184,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
                 // snapshot the previous block so voting power is read from a finalized block
                 snapshotBlock: block.number - 1,
                 minVotingPower: votingSettings.minProposerVotingPower,
-                minParticipation: votingSettings.minParticipation
+                minParticipation: votingSettings.minParticipation,
+                creditMode: ICRISP.CreditMode(creditMode)
             });
             proposal.allowFailureMap = _allowFailureMap;
             proposal.targetConfig = getTargetConfig();
@@ -211,8 +212,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
         Proposal storage proposal = proposals[_proposalId];
 
-        // proposals with more than 3 options are signaling-only and cannot be executed
-        if (proposal.parameters.numOptions > 3) {
+        // signaling-only proposals (polls) cannot be executed
+        if (_isSignalingOnly(proposal.parameters)) {
             revert ProposalNotExecutable(_proposalId);
         }
 
@@ -442,8 +443,8 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
             return false;
         }
 
-        // proposals with more than 3 options are signaling-only and never executable
-        if (proposal.parameters.numOptions > 3) {
+        // signaling-only proposals (polls) are never executable
+        if (_isSignalingOnly(proposal.parameters)) {
             return false;
         }
 
@@ -469,6 +470,16 @@ contract CrispVoting is PluginUUPSUpgradeable, ProposalUpgradeable, ICrispVoting
 
         // For 2-3 options: yes (index 0) must strictly beat no (index 1)
         return counts[0] > counts[1];
+    }
+
+    /// @notice Whether a proposal is signaling-only (a poll) and therefore cannot be executed.
+    /// @dev Only binary-style votes are executable: at most 3 options (yes/no/abstain) and CUSTOM
+    /// credits (so the token-supply quorum denominator is meaningful). Proposals with more than 3
+    /// options, or CONSTANT credits, are polls whose tally is informational only.
+    /// @param _parameters The stored parameters of the proposal.
+    /// @return Returns `true` if the proposal is signaling-only, otherwise false.
+    function _isSignalingOnly(ProposalParameters memory _parameters) internal pure returns (bool) {
+        return _parameters.numOptions > 3 || _parameters.creditMode == ICRISP.CreditMode.CONSTANT;
     }
 
     /// @notice Checks if proposal exists or not.
